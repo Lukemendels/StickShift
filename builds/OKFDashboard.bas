@@ -7,9 +7,9 @@
 '  it is a pure UI layer over the three macros.
 '
 '  Requires the other three modules in the same workbook:
-'    OKFWriteApply   ? ApplyOKFWrite
-'    OKFIndexGenerator ? GenerateOKFIndexes
-'    OKFLint         ? RunOKFLint
+'    OKFWriteApply   → ApplyOKFWrite
+'    OKFIndexGenerator → GenerateOKFIndexes
+'    OKFLint         → RunOKFLint
 ' =====================================================================
 
 Option Explicit
@@ -35,7 +35,7 @@ Sub CreateOKFDashboard()
     End If
 
     ws.Activate
-    ActiveWindow.DisplayGridlines = False   ' ? changed from ws.DisplayGridlines
+    ActiveWindow.DisplayGridlines = False   ' → changed from ws.DisplayGridlines
 
     ' -- Column widths (in character units) ----------------------------------
     ws.Columns("A").ColumnWidth = 2      ' left margin
@@ -74,7 +74,6 @@ Sub CreateOKFDashboard()
 
     ' -- Subtitle -------------------------------------------------------------
     Set r = ws.Range("B3:D3"): r.Merge
-    ' NEW
     r.Value = "Workflow:  write change  " & ChrW(8594) & "  apply  " & _
           ChrW(8594) & "  regenerate  " & ChrW(8594) & "  lint"
 
@@ -187,4 +186,3 @@ Private Sub MakeButton(ByVal ws As Worksheet, ByVal btnRow As Long, _
         .Weight = xlMedium
     End With
 End Sub
-
