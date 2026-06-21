@@ -4,7 +4,7 @@ Attribute VB_Name = "OKFLint"
 '
 '  Scans every concept .md file under BUNDLE_ROOT and writes a
 '  colour-coded findings table to an "OKF Lint Report" worksheet.
-'  The report file is the worksheet — it lives inside the workbook,
+'  The report file is the worksheet - it lives inside the workbook,
 '  never as a .md file, so the generator never indexes it.
 '
 '  Checks performed:
@@ -14,8 +14,7 @@ Attribute VB_Name = "OKFLint"
 '    4. WIP violation                         (> 1 build at status:working)
 '    5. Stalls                                (working + missing/old last_touched,
 '                                              oldest first in report)
-'    6. Pending .proposed files               (staged edits awaiting review)
-'    7. Active-to-archived links              (non-archived build → archived build)
+'    6. Active-to-archived links              (non-archived build -> archived build)
 '
 '  Each finding: severity (error / warning), file, one-line description.
 '
@@ -34,7 +33,7 @@ Private fso As Object
 Sub RunOKFLint()
     m_BundleRoot = OKFConfig.BundleRoot()
     If m_BundleRoot = "" Then
-        MsgBox "Bundle root not set — click Set Bundle Root.", vbExclamation, "OKF Lint"
+        MsgBox "Bundle root not set - click Set Bundle Root.", vbExclamation, "OKF Lint"
         Exit Sub
     End If
 
@@ -54,7 +53,7 @@ Sub RunOKFLint()
 
     Dim summary As String
     If findings.count = 0 Then
-        summary = "No findings — bundle is clean."
+        summary = "No findings - bundle is clean."
     Else
         summary = findings.count & " finding(s). See 'OKF Lint Report' sheet."
     End If
@@ -181,8 +180,6 @@ Private Sub ScanBundle(ByVal findings As Collection)
         AddFinding findings, "warning", CStr(staleArr(i)(1)), CStr(staleArr(i)(2))
     Next i
 
-    ScanProposed m_BundleRoot, findings
-
     Dim archivedSet As Object
     Set archivedSet = CreateObject("Scripting.Dictionary")
     archivedSet.CompareMode = vbTextCompare
@@ -227,36 +224,6 @@ Private Sub AddFinding(ByVal findings As Collection, ByVal severity As String, _
                        ByVal fileName As String, ByVal message As String)
     findings.Add Array(severity, fileName, message)
 End Sub
-
-
-Private Sub ScanProposed(ByVal folderPath As String, ByVal findings As Collection)
-    Dim folder As Object
-    Set folder = fso.GetFolder(folderPath)
-
-    Dim f As Object
-    For Each f In folder.Files
-        If LCase(Right(f.Name, 9)) = ".proposed" Then
-            Dim relPath As String
-            relPath = MakeRelative(f.path)
-            AddFinding findings, "warning", f.Name, _
-                "pending .proposed awaiting review: " & relPath
-        End If
-    Next f
-
-    Dim d As Object
-    For Each d In folder.SubFolders
-        ScanProposed d.path, findings
-    Next d
-End Sub
-
-
-Private Function MakeRelative(ByVal absPath As String) As String
-    If Left(absPath, Len(m_BundleRoot)) = m_BundleRoot Then
-        MakeRelative = Mid(absPath, Len(m_BundleRoot) + 1)
-    Else
-        MakeRelative = absPath
-    End If
-End Function
 
 
 Private Function ResolveLink(ByVal link As String, ByVal fromFile As String) As String

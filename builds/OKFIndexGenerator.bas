@@ -3,10 +3,10 @@ Attribute VB_Name = "OKFIndexGenerator"
 '  OKF Index Generator  (conformant OKF v0.1 producer)
 '
 '  Walks a bundle tree and (re)writes an index.md in every directory,
-'  per SPEC.md §6:
+'  per SPEC.md Sec.6:
 '    - index.md files carry NO frontmatter ...
 '    - ... EXCEPT the bundle-root index.md, which MAY carry exactly one
-'      frontmatter key: okf_version (SPEC §11).
+'      frontmatter key: okf_version (SPEC Sec.11).
 '    - Body = sections grouping concepts under headings, each entry
 '      "* [Title](relative-url) - description".
 '    - Entries include the description from the linked concept's frontmatter.
@@ -19,8 +19,8 @@ Attribute VB_Name = "OKFIndexGenerator"
 '    - The STALL_GROUP ("working") is sorted oldest-last_touched first and shows
 '      the date inline, so stalled builds float to the top of the active section.
 '    - Other groups sort by title for stable, reviewable git diffs.
-'    - Subdirectories listed under a "# Subdirectories" heading per the §6 example.
-'    - UTF-8 in and out (SPEC §4: concepts are UTF-8 markdown).
+'    - Subdirectories listed under a "# Subdirectories" heading per the Sec.6 example.
+'    - UTF-8 in and out (SPEC Sec.4: concepts are UTF-8 markdown).
 '
 '  Requires (Tools -> References): Microsoft ActiveX Data Objects 2.x
 '  (Scripting.FileSystemObject / Dictionary are late-bound below.)
@@ -41,7 +41,7 @@ Private fso As Object
 Sub GenerateOKFIndexes()
     m_BundleRoot = OKFConfig.BundleRoot()
     If m_BundleRoot = "" Then
-        MsgBox "Bundle root not set — click Set Bundle Root.", vbExclamation, "OKF Index Generator"
+        MsgBox "Bundle root not set - click Set Bundle Root.", vbExclamation, "OKF Index Generator"
         Exit Sub
     End If
 
@@ -79,7 +79,7 @@ Private Function ProcessDir(ByVal folder As Object, ByVal isRoot As Boolean) As 
             Dim cStatus As String, cLastTouched As String
             ParseFrontmatter ReadUtf8(f.path), cType, cTitle, cDesc, cStatus, cLastTouched
 
-            If cTitle = "" Then cTitle = BaseName(nm)        ' SPEC §4.1: derive title from filename
+            If cTitle = "" Then cTitle = BaseName(nm)        ' SPEC Sec.4.1: derive title from filename
 
             Dim grp As String
             If LCase(GROUP_BY) = "status" Then grp = cStatus Else grp = cType
@@ -116,7 +116,7 @@ Private Function ProcessDir(ByVal folder As Object, ByVal isRoot As Boolean) As 
     sb = ""
 
     If isRoot Then
-        ' Only permitted frontmatter in any index.md (SPEC §11).
+        ' Only permitted frontmatter in any index.md (SPEC Sec.11).
         sb = "---" & vbLf & "okf_version: """ & OKF_VERSION & """" & vbLf & "---" & vbLf & vbLf
     End If
 
@@ -167,7 +167,7 @@ Private Function ProcessDir(ByVal folder As Object, ByVal isRoot As Boolean) As 
 End Function
 
 
-' --- A non-reserved markdown file is a concept (SPEC §3.1). ---
+' --- A non-reserved markdown file is a concept (SPEC Sec.3.1). ---
 Private Function IsConceptFile(ByVal name As String) As Boolean
     Dim ln As String
     ln = LCase(name)

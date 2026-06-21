@@ -1,9 +1,9 @@
 """
-Python twin of OKFWriteApply.bas — write envelope parser and gate logic.
+Python twin of OKFWriteApply.bas -- write envelope parser and write logic.
 
 Keeps the same behavioural contract as the VBA macro:
   - parse_write_envelope: extract (path, contents) pairs from a <VBA_WRITE> block.
-  - compute_operations:   apply the gate — new file → write, existing → .proposed.
+  - compute_operations:   always write every file directly.
   - Never produces a delete operation.
 
 Golden vectors cover: single new file, single existing file, mixed batch,
@@ -14,7 +14,7 @@ import re
 import pytest
 
 
-# ── Twin logic ──────────────────────────────────────────────────────────────────────────
+# -- Twin logic -------------------------------------------------------------------------
 
 def parse_write_envelope(text: str) -> list[tuple[str, str]]:
     """
@@ -54,22 +54,16 @@ def compute_operations(
     """
     Determine file operations from a parsed envelope.
 
-    For each (path, contents):
-      path NOT in existing_files  →  ('write',  path,              contents)
-      path IN  existing_files     →  ('staged', path + '.proposed', contents)
-
+    Every file is written directly regardless of whether it already exists.
     No delete operation is ever produced.
     """
     ops = []
     for path, contents in parsed_files:
-        if path in existing_files:
-            ops.append(("staged", path + ".proposed", contents))
-        else:
-            ops.append(("write", path, contents))
+        ops.append(("write", path, contents))
     return ops
 
 
-# ── Shared fixture content ────────────────────────────────────────────────────────────────────
+# -- Shared fixture content ---------------------------------------------------------------
 
 _CONTENTS_A = """\
 ---
@@ -129,7 +123,7 @@ def _envelope(*path_content_pairs: tuple[str, str]) -> str:
     return "<VBA_WRITE>\n" + "\n".join(parts) + "\n</VBA_WRITE>"
 
 
-# ── Golden vectors ─────────────────────────────────────────────────────────────────────────────
+# -- Golden vectors -----------------------------------------------------------------------
 
 GOLDEN_VECTORS = [
     {
@@ -139,10 +133,10 @@ GOLDEN_VECTORS = [
         "expected_ops": [("write", "builds/new-build.md", _CONTENTS_A)],
     },
     {
-        "name": "single_existing_file_stages_as_proposed",
+        "name": "single_existing_file_written_directly",
         "envelope": _envelope(("builds/existing-build.md", _CONTENTS_A)),
         "existing": {"builds/existing-build.md"},
-        "expected_ops": [("staged", "builds/existing-build.md.proposed", _CONTENTS_A)],
+        "expected_ops": [("write", "builds/existing-build.md", _CONTENTS_A)],
     },
     {
         "name": "mixed_new_and_existing",
@@ -153,7 +147,7 @@ GOLDEN_VECTORS = [
         "existing": {"builds/existing-build.md"},
         "expected_ops": [
             ("write", "builds/new-build.md", _CONTENTS_A),
-            ("staged", "builds/existing-build.md.proposed", _CONTENTS_B),
+            ("write", "builds/existing-build.md", _CONTENTS_B),
         ],
     },
     {
@@ -175,21 +169,21 @@ GOLDEN_VECTORS = [
         ],
     },
     {
-        "name": "two_existing_files_both_staged",
+        "name": "two_existing_files_written_directly",
         "envelope": _envelope(
             ("builds/alpha.md", _CONTENTS_A),
             ("builds/beta.md", _CONTENTS_B),
         ),
         "existing": {"builds/alpha.md", "builds/beta.md"},
         "expected_ops": [
-            ("staged", "builds/alpha.md.proposed", _CONTENTS_A),
-            ("staged", "builds/beta.md.proposed", _CONTENTS_B),
+            ("write", "builds/alpha.md", _CONTENTS_A),
+            ("write", "builds/beta.md", _CONTENTS_B),
         ],
     },
 ]
 
 
-# ── Tests ─────────────────────────────────────────────────────────────────────────────────
+# -- Tests -------------------------------------------------------------------------------
 
 @pytest.mark.parametrize("vec", GOLDEN_VECTORS, ids=[v["name"] for v in GOLDEN_VECTORS])
 def test_golden_vector(vec: dict) -> None:
@@ -215,11 +209,12 @@ def test_preamble_and_postamble_ignored() -> None:
     assert parsed[0][0] == "builds/new.md"
 
 
-def test_proposed_path_has_dot_proposed_suffix() -> None:
+def test_existing_file_written_to_original_path() -> None:
+    """Existing files are written to their real path."""
     env = _envelope(("builds/foo.md", _CONTENTS_A))
     parsed = parse_write_envelope(env)
     ops = compute_operations(parsed, {"builds/foo.md"})
-    assert ops[0][1] == "builds/foo.md.proposed"
+    assert ops[0][1] == "builds/foo.md"
 
 
 def test_original_path_unchanged_for_new_file() -> None:
@@ -237,7 +232,7 @@ def test_no_delete_operations_ever() -> None:
     parsed = parse_write_envelope(env)
     ops = compute_operations(parsed, {"builds/old.md"})
     for op_type, _, _ in ops:
-        assert op_type in ("write", "staged"), f"unexpected op type: {op_type}"
+        assert op_type == "write", f"unexpected op type: {op_type}"
 
 
 def test_contents_preserved_exactly() -> None:

@@ -1,18 +1,18 @@
 Attribute VB_Name = "OKFDashboard"
 ' =====================================================================
-'  OKF Dashboard  — one-time setup for a macro-button control panel
+'  OKF Dashboard  - one-time setup for a macro-button control panel
 '
 '  Run CreateOKFDashboard once to build the "OKF Dashboard" sheet.
 '  Re-run it at any time to reset the sheet (e.g. after importing
-'  into a new workbook).  The sheet itself has no persistent state —
+'  into a new workbook).  The sheet itself has no persistent state -
 '  it is a pure UI layer over the five macros.
 '
 '  Requires the other modules in the same workbook:
-'    OKFConfig         → BundleRootRaw, SetBundleRoot
-'    OKFWriteApply     → ApplyOKFWrite
-'    OKFIndexGenerator → GenerateOKFIndexes
-'    OKFLint           → RunOKFLint
-'    OKFContextBundle  → BuildContextBundle
+'    OKFConfig         -> BundleRootRaw, SetBundleRoot
+'    OKFWriteApply     -> ApplyOKFWrite
+'    OKFIndexGenerator -> GenerateOKFIndexes
+'    OKFLint           -> RunOKFLint
+'    OKFContextBundle  -> BuildContextBundle
 ' =====================================================================
 
 Option Explicit
@@ -100,18 +100,18 @@ Sub CreateOKFDashboard()
 
     ' -- Three portfolio buttons -----------------------------------------------
     MakeButton ws, 5, _
-        "1 — Apply Write Envelope", "ApplyOKFWrite", RGB(37, 99, 235), _
+        "1 - Apply Write Envelope", "ApplyOKFWrite", RGB(37, 99, 235), _
         "Paste the Portfolio Writer's <VBA_WRITE> output to the clipboard, then click." & Chr(10) & _
-        "New builds are written directly; edits land as .proposed sidecars for review."
+        "Writes all files directly."
 
     MakeButton ws, 8, _
-        "2 — Regenerate Index", "GenerateOKFIndexes", RGB(22, 163, 74), _
+        "2 - Regenerate Index", "GenerateOKFIndexes", RGB(22, 163, 74), _
         "Rebuilds index.md from every .md build in the folder." & Chr(10) & _
-        "Run after renaming a .proposed sidecar to .md to confirm an edit."
+        "Run after applying any file changes."
 
     MakeButton ws, 11, _
-        "3 — Run Linter", "RunOKFLint", RGB(220, 85, 10), _
-        "Scans the bundle: broken links, WIP violations, stalls, pending .proposed." & Chr(10) & _
+        "3 - Run Linter", "RunOKFLint", RGB(220, 85, 10), _
+        "Scans the bundle: broken links, WIP violations, stalls, active-to-archived." & Chr(10) & _
         "Findings appear colour-coded in the ""OKF Lint Report"" sheet."
 
     ' -- Section divider between portfolio tools and context tools -------------
@@ -125,14 +125,14 @@ Sub CreateOKFDashboard()
 
     ' -- Two context-bundle buttons --------------------------------------------
     MakeButton ws, 14, _
-        "4 — Build Context Bundle", "BuildContextBundle", RGB(109, 40, 217), _
+        "4 - Build Context Bundle", "BuildContextBundle", RGB(109, 40, 217), _
         "Copy a <CONTEXT_REQUEST> from DHSChat to the clipboard, then click." & Chr(10) & _
         "Assembles OKF-context.md in the -dist folder for attaching to the next message."
 
     MakeButton ws, 17, _
-        "5 — Set Bundle Root", "SetBundleRoot", RGB(71, 85, 105), _
+        "5 - Set Bundle Root", "SetBundleRoot", RGB(71, 85, 105), _
         "Opens a folder picker to set (or change) the bundle root path." & Chr(10) & _
-        "Stored in the registry — set once per machine, never edit the .bas files."
+        "Stored in the registry - set once per machine, never edit the .bas files."
 
     ' -- Current-root display -------------------------------------------------
     Set r = ws.Range("B20:D20"): r.Merge
