@@ -1,14 +1,13 @@
 """
 Python twin of OKFLint.bas — bundle integrity checker.
 
-Implements the same seven checks as the VBA macro:
+Implements the same six checks as the VBA macro:
   1. Missing / empty `type` field
   2. Missing required fields: status, effort, impact
   3. Broken cross-links (.md links whose target file is absent)
   4. WIP violation (> 1 build at status:working)
   5. Stalls (working builds with missing or old last_touched)
-  6. Pending .proposed files awaiting review
-  7. Active-to-archived links
+  6. Active-to-archived links
 
 Golden vectors use two fixture bundles:
   fixtures/clean_bundle   — no findings expected
@@ -211,14 +210,7 @@ def lint_bundle(
     for _, finding in stale_findings:
         findings.append(finding)
 
-    # Check 6: pending .proposed files (recursive scan of whole bundle).
-    for proposed in sorted(bundle_root.rglob("*.proposed")):
-        rel = proposed.relative_to(bundle_root)
-        findings.append(
-            Finding("warning", proposed.name, f"pending .proposed awaiting review: {rel}")
-        )
-
-    # Check 7: active-to-archived links.
+    # Check 6: active-to-archived links.
     archived_paths = {
         path_str
         for path_str, fm in fm_by_path.items()
@@ -300,15 +292,7 @@ class TestBrokenBundle:
         ]
         assert stale_fresh == []
 
-    # ── Check 6: pending .proposed ───────────────────────────────────────────────────────────────────
-
-    def test_pending_proposed_file_is_flagged_as_warning(self) -> None:
-        proposed = [f for f in self.warnings if ".proposed" in f.file]
-        assert len(proposed) == 1
-        assert "pending" in proposed[0].message
-        assert "working-fresh.md.proposed" in proposed[0].message
-
-    # ── Check 7: active-to-archived link ─────────────────────────────────────────────────────────────
+    # ── Check 6: active-to-archived link ─────────────────────────────────────────────────────────────
 
     def test_active_to_archived_link_is_flagged_as_warning(self) -> None:
         arch_links = [

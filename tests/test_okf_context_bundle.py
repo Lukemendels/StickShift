@@ -222,6 +222,19 @@ def _collect_all_concepts(bundle_root: Path) -> list[str]:
     return result
 
 
+def _collect_link_sources(bundle_root: Path) -> list[str]:
+    """Return all .md files (except log.md) as bundle-root-relative forward-slash paths.
+
+    Includes index.md files so that map files can serve as inbound link hubs.
+    """
+    result = []
+    for f in sorted(bundle_root.rglob("*.md")):
+        if f.name.lower() != "log.md":
+            rel = str(f.relative_to(bundle_root)).replace("\\", "/")
+            result.append(rel)
+    return result
+
+
 def assemble_index(bundle_root: Path) -> tuple[str, int, int, int]:
     """
     Assemble Hop-1 index bundle.
@@ -300,7 +313,7 @@ def assemble_bundle(
 
         elif direction.lower() == "inbound":
             frontier_set = set(frontier)
-            for concept_rel in _collect_all_concepts(bundle_root):
+            for concept_rel in _collect_link_sources(bundle_root):
                 if concept_rel in visited:
                     continue
                 abs_path = bundle_root / concept_rel
@@ -569,6 +582,17 @@ class TestViaAndInbound:
             CB, ["builds/alpha.md"], depth=1, direction="inbound", via="Dependencies"
         )
         assert body_no_via == body_via
+
+    def test_inbound_from_skill_finds_index(self) -> None:
+        # skills/index.md links to skills/document-review.md, so an inbound
+        # traversal from the skill should surface the index as a map file.
+        body, _, map_c, sel_c = assemble_bundle(
+            CB, ["skills/document-review.md"], depth=1, direction="inbound"
+        )
+        assert "concept=skills/document-review.md" in body
+        assert "concept=skills/index.md" in body
+        assert map_c == 1   # skills/index.md layer=map
+        assert sel_c == 1   # skills/document-review.md layer=selected
 
 
 # ── Tests — §11.5: depth 0 (seeds only) ──────────────────────────────────────────────

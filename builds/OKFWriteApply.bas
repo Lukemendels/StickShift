@@ -4,18 +4,14 @@ Attribute VB_Name = "OKFWriteApply"
 '
 '  Reads a <VBA_WRITE> envelope from the clipboard (output of the
 '  Portfolio Writer DHSChat Assistant), parses each ### FILE: block,
-'  and applies a gate:
-'    - Path does NOT exist  → write directly (new build).
-'    - Path DOES exist      → write to <path>.proposed instead.
-'      The original is never overwritten; the .proposed sidecar is the
-'      staged edit awaiting human review. Rename to .md to apply.
+'  and writes every file directly (creating parent dirs as needed).
 '
 '  After applying, calls GenerateOKFIndexes so new builds appear in
-'  the index immediately. (.proposed files end in .proposed, not .md,
-'  so the generator ignores them until the human renames them.)
+'  the index immediately.
 '
-'  Requires (Tools -> References): Microsoft ActiveX Data Objects 2.x
-'  (MSForms.DataObject is late-bound; no extra reference needed.)
+'  Requires: OKFClipboard module (GetClipboardText), OKFConfig module,
+'  OKFIndexGenerator module.
+'  Microsoft ActiveX Data Objects 2.x (ADODB.Stream for UTF-8 I/O).
 '
 '  *** BUNDLE_ROOT must match the value in OKFIndexGenerator.bas ***
 ' =====================================================================
@@ -26,96 +22,11 @@ Private m_BundleRoot As String
 
 Private fso As Object
 
-#If VBA7 Then
-    Private Declare PtrSafe Function OpenClipboard Lib "user32" (ByVal hwnd As LongPtr) As Long
-    Private Declare PtrSafe Function CloseClipboard Lib "user32" () As Long
-    Private Declare PtrSafe Function IsClipboardFormatAvailable Lib "user32" (ByVal wFormat As Long) As Long
-    Private Declare PtrSafe Function GetClipboardData Lib "user32" (ByVal uFormat As Long) As LongPtr
-    Private Declare PtrSafe Function GlobalLock Lib "kernel32" (ByVal hMem As LongPtr) As LongPtr
-    Private Declare PtrSafe Function GlobalUnlock Lib "kernel32" (ByVal hMem As LongPtr) As Long
-    Private Declare PtrSafe Function GlobalSize Lib "kernel32" (ByVal hMem As LongPtr) As LongPtr
-    Private Declare PtrSafe Function lstrcpyW Lib "kernel32" (ByVal lpString1 As LongPtr, ByVal lpString2 As LongPtr) As LongPtr
-#Else
-    Private Declare Function OpenClipboard Lib "user32" (ByVal hwnd As Long) As Long
-    Private Declare Function CloseClipboard Lib "user32" () As Long
-    Private Declare Function IsClipboardFormatAvailable Lib "user32" (ByVal wFormat As Long) As Long
-    Private Declare Function GetClipboardData Lib "user32" (ByVal uFormat As Long) As Long
-    Private Declare Function GlobalLock Lib "kernel32" (ByVal hMem As Long) As Long
-    Private Declare Function GlobalUnlock Lib "kernel32" (ByVal hMem As Long) As Long
-    Private Declare Function GlobalSize Lib "kernel32" (ByVal hMem As Long) As Long
-    Private Declare Function lstrcpyW Lib "kernel32" (ByVal lpString1 As Long, ByVal lpString2 As Long) As Long
-#End If
-
-Public Const CF_UNICODETEXT As Long = 13&
-Public Const CF_TEXT As Long = 1&
-
-Public Function GetClipboardText() As String
-    Dim hData As LongPtr
-    Dim pData As LongPtr
-    Dim sizeBytes As Long          ' use Long for size
-    Dim tmp As String
-    Dim charsCount As Long
-    Dim nulPos As Long
-
-    ' Try Unicode text first.
-    If OpenClipboard(0) = 0 Then Exit Function
-
-    On Error GoTo CleanExit
-
-    If IsClipboardFormatAvailable(CF_UNICODETEXT) <> 0 Then
-        hData = GetClipboardData(CF_UNICODETEXT)
-        If hData <> 0 Then
-            pData = GlobalLock(hData)
-            If pData <> 0 Then
-                sizeBytes = CLng(GlobalSize(hData))
-                If sizeBytes > 0 Then
-                    ' Each Unicode character is 2 bytes.
-                    charsCount = sizeBytes \ 2
-                    tmp = String$(charsCount, vbNullChar)
-                    lstrcpyW StrPtr(tmp), pData
-
-                    ' Trim at first null terminator.
-                    nulPos = InStr(1, tmp, vbNullChar)
-                    If nulPos > 0 Then
-                        GetClipboardText = Left$(tmp, nulPos - 1)
-                    Else
-                        GetClipboardText = tmp
-                    End If
-                End If
-                GlobalUnlock hData
-            End If
-        End If
-
-    ElseIf IsClipboardFormatAvailable(CF_TEXT) <> 0 Then
-        ' Fallback to ANSI text and convert to Unicode.
-        hData = GetClipboardData(CF_TEXT)
-        If hData <> 0 Then
-            pData = GlobalLock(hData)
-            If pData <> 0 Then
-                sizeBytes = CLng(GlobalSize(hData))
-                If sizeBytes > 0 Then
-                    tmp = String$(sizeBytes, vbNullChar)
-                    lstrcpyW StrPtr(tmp), pData
-                    nulPos = InStr(1, tmp, vbNullChar)
-                    If nulPos > 0 Then
-                        tmp = Left$(tmp, nulPos - 1)
-                    End If
-                    GetClipboardText = StrConv(tmp, vbUnicode)
-                End If
-                GlobalUnlock hData
-            End If
-        End If
-    End If
-
-CleanExit:
-    CloseClipboard
-End Function
-
 
 Sub ApplyOKFWrite()
     m_BundleRoot = OKFConfig.BundleRoot()
     If m_BundleRoot = "" Then
-        MsgBox "Bundle root not set — click Set Bundle Root.", vbExclamation, "OKF Write Apply"
+        MsgBox "Bundle root not set - click Set Bundle Root.", vbExclamation, "OKF Write Apply"
         Exit Sub
     End If
 
@@ -193,10 +104,8 @@ Sub ApplyOKFWrite()
         Exit Sub
     End If
 
-    ' --- 4. Gate logic: new → write; existing → .proposed ---
-    Dim newCount As Long:    newCount = 0
-    Dim stagedCount As Long: stagedCount = 0
-    Dim stagedList As String: stagedList = ""
+    ' --- 4. Write all files (create parent dir if needed) ---
+    Dim writeCount As Long: writeCount = 0
 
     Dim i As Long
     For i = 0 To fileCount - 1
@@ -209,27 +118,12 @@ Sub ApplyOKFWrite()
             fso.CreateFolder parentDir
         End If
 
-        If Not fso.FileExists(absPath) Then
-            WriteUtf8 absPath, fileContents(i)
-            newCount = newCount + 1
-        Else
-            Dim proposedPath As String
-            proposedPath = absPath & ".proposed"
-            WriteUtf8 proposedPath, fileContents(i)
-            stagedList = stagedList & vbLf & "  " & proposedPath
-            stagedCount = stagedCount + 1
-        End If
+        WriteUtf8 absPath, fileContents(i)
+        writeCount = writeCount + 1
     Next i
 
     ' --- 5. Summary ---
-    Dim msg As String
-    msg = newCount & " new file(s) written."
-    If stagedCount > 0 Then
-        msg = msg & vbLf & stagedCount & " edit(s) staged for review:" & stagedList
-        msg = msg & vbLf & vbLf & "Rename a .proposed file to .md to apply the edit." & vbLf & _
-              "The original is unchanged until you do."
-    End If
-    MsgBox msg, vbInformation, "OKF Write Apply"
+    MsgBox writeCount & " file(s) written.", vbInformation, "OKF Write Apply"
 
     ' --- 6. Regenerate index so new builds appear immediately ---
     GenerateOKFIndexes
@@ -248,7 +142,7 @@ End Function
 Private Function ReadClipboard() As String
     On Error GoTo FailSafe
 
-    ReadClipboard = GetClipboardText()
+    ReadClipboard = OKFClipboard.GetClipboardText()
     Exit Function
 
 FailSafe:

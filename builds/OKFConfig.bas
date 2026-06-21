@@ -1,15 +1,15 @@
 Attribute VB_Name = "OKFConfig"
 ' =====================================================================
-'  OKF Config  — single source of truth for the bundle root path
+'  OKF Config  - single source of truth for the bundle root path
 '
 '  Stores the root in the Windows registry via VBA's SaveSetting /
 '  GetSetting API (HKCU\Software\VB and VBA Program Settings\OKF\Config).
 '
 '  Public surface:
-'    BundleRoot()    — get the root (prompts picker if not yet set).
-'    SetBundleRoot() — folder-picker UI; saves and refreshes dashboard.
-'    BundleRootRaw() — non-prompting read; safe for dashboard display.
-'    DistDir()       — the -dist sibling of BundleRoot (created if absent).
+'    BundleRoot()    - get the root (prompts picker if not yet set).
+'    SetBundleRoot() - folder-picker UI; saves and refreshes dashboard.
+'    BundleRootRaw() - non-prompting read; safe for dashboard display.
+'    DistDir()       - the -dist sibling of BundleRoot (created if absent).
 ' =====================================================================
 
 Option Explicit

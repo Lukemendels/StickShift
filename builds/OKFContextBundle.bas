@@ -10,8 +10,8 @@ Attribute VB_Name = "OKFContextBundle"
 '  folder of the bundle root.
 '
 '  Modes:
-'    index  — Hop-1 opener: foundation + /index.md + /skills/index.md.
-'    bundle — BFS expansion from seed paths at configurable depth and
+'    index  - Hop-1 opener: foundation + /index.md + /skills/index.md.
+'    bundle - BFS expansion from seed paths at configurable depth and
 '             direction (outbound links or inbound backlinks), with
 '             optional via: heading scoping for outbound.
 '
@@ -19,10 +19,11 @@ Attribute VB_Name = "OKFContextBundle"
 '
 '  Requires (Tools -> References): Microsoft ActiveX Data Objects 2.x
 '  (Scripting.FileSystemObject / Dictionary / VBScript.RegExp are
-'  late-bound; MSForms.DataObject is late-bound.)
+'  late-bound; no other references needed.)
 '
-'  The ONLY module-level dependency is OKFConfig.  All leaf helpers
-'  (UTF-8 I/O, link parsing, etc.) are private copies in this module.
+'  Module-level dependencies: OKFConfig (BundleRoot, DistDir),
+'  OKFClipboard (GetClipboardText).  All leaf helpers (UTF-8 I/O,
+'  link parsing, etc.) are private copies in this module.
 ' =====================================================================
 
 Option Explicit
@@ -35,7 +36,7 @@ Private Const OUT_FILENAME   As String = "OKF-context.md"
 Private fso As Object
 
 
-' ── Entry point ──────────────────────────────────────────────────────────────
+' -- Entry point ------------------------------------------------------------------
 
 Sub BuildContextBundle()
 
@@ -43,7 +44,7 @@ Sub BuildContextBundle()
     Dim root As String
     root = OKFConfig.BundleRoot()
     If root = "" Then
-        MsgBox "Bundle root not set — click Set Bundle Root.", vbExclamation, "OKF Context Bundle"
+        MsgBox "Bundle root not set - click Set Bundle Root.", vbExclamation, "OKF Context Bundle"
         Exit Sub
     End If
 
@@ -148,7 +149,7 @@ Sub BuildContextBundle()
     ' 6. Write to -dist sibling folder (never inside the bundle root).
     Dim distDir As String: distDir = OKFConfig.DistDir()
     If distDir = "" Then
-        MsgBox "Bundle root not set — cannot determine output directory.", _
+        MsgBox "Bundle root not set - cannot determine output directory.", _
                vbCritical, "OKF Context Bundle"
         Exit Sub
     End If
@@ -156,11 +157,31 @@ Sub BuildContextBundle()
     Dim outPath As String: outPath = distDir & OUT_FILENAME
     WriteUtf8 outPath, fullOutput
 
-    ' 7. Open the dist folder with the file selected; report summary.
+    ' 7. Open/focus the dist folder in Explorer (reuse existing window).
     Dim charCount  As Long: charCount  = Len(fullOutput)
     Dim tokenCount As Long: tokenCount = charCount \ 4
 
-    Shell "explorer.exe /select,""" & outPath & """", vbNormalFocus
+    Dim shellApp As Object
+    Set shellApp = CreateObject("Shell.Application")
+    Dim distNorm As String
+    distNorm = LCase(TrimTrailSlash(distDir))
+    Dim openWin As Boolean: openWin = True
+    Dim w As Object
+    For Each w In shellApp.Windows
+        Dim wFolderPath As String: wFolderPath = ""
+        On Error Resume Next
+        wFolderPath = LCase(TrimTrailSlash(w.Document.Folder.Self.path))
+        On Error GoTo 0
+        If wFolderPath = distNorm Then
+            w.Visible = True
+            On Error Resume Next
+            AppActivate w.LocationName
+            On Error GoTo 0
+            openWin = False
+            Exit For
+        End If
+    Next w
+    If openWin Then Shell "explorer.exe """ & distDir & """", vbNormalFocus
 
     MsgBox "Context bundle written:" & vbLf & outPath & vbLf & vbLf & _
            charCount & " chars   ~" & tokenCount & " tokens   " & _
@@ -169,7 +190,7 @@ Sub BuildContextBundle()
 End Sub
 
 
-' ── Mode: index ───────────────────────────────────────────────────────────────
+' -- Mode: index ------------------------------------------------------------------
 
 Private Function AssembleIndex(ByVal root As String, _
                                 ByRef foundCount As Long, _
@@ -214,7 +235,7 @@ Private Function AssembleIndex(ByVal root As String, _
 End Function
 
 
-' ── Mode: bundle (BFS graph expansion) ────────────────────────────────────────
+' -- Mode: bundle (BFS graph expansion) ------------------------------------------
 
 Private Function AssembleBundle(ByVal root As String, _
                                  ByRef seeds()     As String, _
@@ -243,7 +264,7 @@ Private Function AssembleBundle(ByVal root As String, _
                 visited.Add seedRel, True
                 frontier(fi) = seedRel: fi = fi + 1
             End If
-            ' Absent seeds skipped silently per OKF §9.
+            ' Absent seeds skipped silently per OKF Sec. 9.
         End If
     Next s
 
@@ -296,11 +317,12 @@ NextFrontierItem:
                     frontSet.Add frontier(fsx), True
             Next fsx
 
-            ' Scan every concept in the bundle for links to frontier members.
+            ' Scan every link source in the bundle for links to frontier members.
+            ' Uses CollectLinkSourcesRecursive (includes index.md, excludes log.md).
             Dim allConcepts() As String
             Dim allCount As Long: allCount = 0
             ReDim allConcepts(0 To 999)
-            CollectConceptsRecursive fso.GetFolder(root), root, allConcepts, allCount
+            CollectLinkSourcesRecursive fso.GetFolder(root), root, allConcepts, allCount
 
             Dim ac As Long
             For ac = 0 To allCount - 1
@@ -359,7 +381,7 @@ NextConcept:
 End Function
 
 
-' ── Helpers — file collection ─────────────────────────────────────────────────
+' -- Helpers - file collection ---------------------------------------------------
 
 ' Collect all concept files under folder, root-relative with forward slashes.
 Private Sub CollectConceptsRecursive(ByVal folder As Object, ByVal root As String, _
@@ -376,6 +398,24 @@ Private Sub CollectConceptsRecursive(ByVal folder As Object, ByVal root As Strin
     Dim d As Object
     For Each d In folder.SubFolders
         CollectConceptsRecursive d, root, files, count
+    Next d
+End Sub
+
+' Collect all .md files except log.md (includes index.md) for inbound link scanning.
+Private Sub CollectLinkSourcesRecursive(ByVal folder As Object, ByVal root As String, _
+                                         ByRef files() As String, ByRef count As Long)
+    Dim f As Object
+    For Each f In folder.Files
+        If IsLinkSourceFile(f.Name) Then
+            Dim rel As String: rel = Mid(f.path, Len(root) + 1)
+            rel = Replace(rel, "\", "/")
+            If count > UBound(files) Then ReDim Preserve files(0 To count + 999)
+            files(count) = rel: count = count + 1
+        End If
+    Next f
+    Dim d As Object
+    For Each d In folder.SubFolders
+        CollectLinkSourcesRecursive d, root, files, count
     Next d
 End Sub
 
@@ -403,7 +443,7 @@ Private Function LeafName(ByVal p As String) As String
 End Function
 
 
-' ── Helpers — link extraction and resolution ──────────────────────────────────
+' -- Helpers - link extraction and resolution ------------------------------------
 
 ' Extract .md links, optionally scoped to a named heading's section.
 Private Function ExtractLinksScoped(ByVal content As String, _
@@ -534,7 +574,7 @@ Private Function ResolveLinkToRel(ByVal link As String, _
 End Function
 
 
-' ── Helpers — anchor and path ─────────────────────────────────────────────────
+' -- Helpers - anchor and path ---------------------------------------------------
 
 Private Function MakeAnchor(ByVal relPath As String, ByVal content As String, _
                               ByVal layer As String) As String
@@ -569,6 +609,19 @@ Private Function IsConceptFile(ByVal name As String) As Boolean
     IsConceptFile = (Right(ln, 3) = ".md") And (ln <> "index.md") And (ln <> "log.md")
 End Function
 
+Private Function IsLinkSourceFile(ByVal name As String) As Boolean
+    Dim ln As String: ln = LCase(name)
+    IsLinkSourceFile = (Right(ln, 3) = ".md") And (ln <> "log.md")
+End Function
+
+Private Function TrimTrailSlash(ByVal s As String) As String
+    If Len(s) > 0 And Right(s, 1) = "\" Then
+        TrimTrailSlash = Left(s, Len(s) - 1)
+    Else
+        TrimTrailSlash = s
+    End If
+End Function
+
 Private Function Unquote(ByVal s As String) As String
     If Len(s) >= 2 Then
         If (Left(s, 1) = Chr(34) And Right(s, 1) = Chr(34)) _
@@ -580,13 +633,17 @@ Private Function Unquote(ByVal s As String) As String
 End Function
 
 
-' ── Helpers — I/O ─────────────────────────────────────────────────────────────
+' -- Helpers - I/O ---------------------------------------------------------------
 
 Private Function ReadClipboard() As String
-    Dim obj As Object
-    Set obj = CreateObject("MSForms.DataObject")
-    obj.GetFromClipboard
-    ReadClipboard = obj.GetText
+    On Error GoTo FailSafe
+
+    ReadClipboard = OKFClipboard.GetClipboardText()
+    Exit Function
+
+FailSafe:
+    ' If anything goes wrong, return empty string so caller can handle.
+    ReadClipboard = ""
 End Function
 
 Private Function ReadUtf8(ByVal path As String) As String
