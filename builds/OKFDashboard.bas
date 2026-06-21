@@ -28,7 +28,7 @@ Sub CreateOKFDashboard()
 
     If ws Is Nothing Then
         Set ws = ThisWorkbook.Sheets.Add(Before:=ThisWorkbook.Sheets(1))
-        ws.Name = SHEET_NAME
+        ws.name = SHEET_NAME
     Else
         ws.Cells.Clear
         Dim shp As Shape
@@ -48,15 +48,15 @@ Sub CreateOKFDashboard()
     ws.Columns("E").ColumnWidth = 2      ' right margin
 
     ' -- Row heights (in points) ----------------------------------------------
-    ws.Rows("1").RowHeight  = 10    ' top padding
-    ws.Rows("2").RowHeight  = 32    ' title
-    ws.Rows("3").RowHeight  = 16    ' subtitle
-    ws.Rows("4").RowHeight  = 16    ' gap before first button
-    ws.Rows("5").RowHeight  = 46    ' button 1
-    ws.Rows("6").RowHeight  = 34    ' description 1
-    ws.Rows("7").RowHeight  = 10    ' gap
-    ws.Rows("8").RowHeight  = 46    ' button 2
-    ws.Rows("9").RowHeight  = 34    ' description 2
+    ws.Rows("1").RowHeight = 10     ' top padding
+    ws.Rows("2").RowHeight = 32     ' title
+    ws.Rows("3").RowHeight = 16     ' subtitle
+    ws.Rows("4").RowHeight = 16     ' gap before first button
+    ws.Rows("5").RowHeight = 46     ' button 1
+    ws.Rows("6").RowHeight = 34     ' description 1
+    ws.Rows("7").RowHeight = 10     ' gap
+    ws.Rows("8").RowHeight = 46     ' button 2
+    ws.Rows("9").RowHeight = 34     ' description 2
     ws.Rows("10").RowHeight = 10    ' gap
     ws.Rows("11").RowHeight = 46    ' button 3
     ws.Rows("12").RowHeight = 34    ' description 3
@@ -78,7 +78,7 @@ Sub CreateOKFDashboard()
     ' -- Title ----------------------------------------------------------------
     Dim r As Range
     Set r = ws.Range("B2:D2"): r.Merge
-    r.Value = "OKF Build Portfolio"
+    r.Value = "OKF Agent"
     r.Font.Size = 17: r.Font.Bold = True
     r.Font.Color = RGB(15, 23, 42)
     r.VerticalAlignment = xlVAlignCenter
@@ -101,7 +101,7 @@ Sub CreateOKFDashboard()
     ' -- Three portfolio buttons -----------------------------------------------
     MakeButton ws, 5, _
         "1 - Apply Write Envelope", "ApplyOKFWrite", RGB(37, 99, 235), _
-        "Paste the Portfolio Writer's <VBA_WRITE> output to the clipboard, then click." & Chr(10) & _
+        "Paste the OKF DHSChat Assistant's <VBA_WRITE> output to the clipboard, then click." & Chr(10) & _
         "Writes/overwrites files directly; every edit is recorded in log.md."
 
     MakeButton ws, 8, _
@@ -191,12 +191,12 @@ Private Sub MakeButton(ByVal ws As Worksheet, ByVal btnRow As Long, _
                                 cell.Width - INSET * 2, _
                                 cell.Height - INSET * 2)
     With s
-        .Name = "btn_" & macroName
+        .name = "btn_" & macroName
         .OnAction = macroName
 
         .Fill.ForeColor.RGB = btnColor
         .Fill.Solid
-        .Line.Visible = msoFalse
+        .line.Visible = msoFalse
 
         On Error Resume Next
         .Adjustments(1) = 0.18
