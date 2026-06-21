@@ -64,12 +64,12 @@ Sub BuildContextBundle()
 
     ' 3. Detect CONTEXT_REQUEST block; default to index mode if absent.
     Dim startPos As Long: startPos = InStr(clip, "<CONTEXT_REQUEST>")
-    Dim endPos   As Long: endPos   = InStr(clip, "</CONTEXT_REQUEST>")
+    Dim endPos   As Long: endPos = InStr(clip, "</CONTEXT_REQUEST>")
 
-    Dim mode      As String: mode      = "index"
-    Dim depth     As Long:   depth     = 1
+    Dim mode      As String: mode = "index"
+    Dim depth     As Long:   depth = 1
     Dim direction As String: direction = "outbound"
-    Dim viaH      As String: viaH      = ""
+    Dim viaH      As String: viaH = ""
     Dim seeds(0 To 199) As String
     Dim seedCount As Long: seedCount = 0
 
@@ -109,8 +109,8 @@ Sub BuildContextBundle()
 
     ' 4. Dispatch to index or bundle assembly.
     Dim foundCount As Long: foundCount = 0
-    Dim mapCount   As Long: mapCount   = 0
-    Dim selCount   As Long: selCount   = 0
+    Dim mapCount   As Long: mapCount = 0
+    Dim selCount   As Long: selCount = 0
     Dim assembled  As String
 
     If mode = "index" Then
@@ -130,7 +130,7 @@ Sub BuildContextBundle()
 
     ' 5. Build the OKF-CONTEXT-BUNDLE header.
     Dim totalConcepts As Long: totalConcepts = foundCount + mapCount + selCount
-    Dim approxTokens  As Long: approxTokens  = CLng(Len(assembled)) \ 4
+    Dim approxTokens  As Long: approxTokens = CLng(Len(assembled)) \ 4
     Dim ts As String
     ts = Format(Now(), "yyyy-mm-dd") & "T" & Format(Now(), "hh:mm:ss") & "Z"
 
@@ -147,30 +147,30 @@ Sub BuildContextBundle()
     Dim fullOutput As String: fullOutput = header & assembled
 
     ' 6. Write to -dist sibling folder (never inside the bundle root).
-    Dim distDir As String: distDir = OKFConfig.DistDir()
-    If distDir = "" Then
+    Dim DistDir As String: DistDir = OKFConfig.DistDir()
+    If DistDir = "" Then
         MsgBox "Bundle root not set - cannot determine output directory.", _
                vbCritical, "OKF Context Bundle"
         Exit Sub
     End If
 
-    Dim outPath As String: outPath = distDir & OUT_FILENAME
+    Dim outPath As String: outPath = DistDir & OUT_FILENAME
     WriteUtf8 outPath, fullOutput
 
     ' 7. Open/focus the dist folder in Explorer (reuse existing window).
-    Dim charCount  As Long: charCount  = Len(fullOutput)
+    Dim charCount  As Long: charCount = Len(fullOutput)
     Dim tokenCount As Long: tokenCount = charCount \ 4
 
     Dim shellApp As Object
     Set shellApp = CreateObject("Shell.Application")
     Dim distNorm As String
-    distNorm = LCase(TrimTrailSlash(distDir))
+    distNorm = LCase(TrimTrailSlash(DistDir))
     Dim openWin As Boolean: openWin = True
     Dim w As Object
     For Each w In shellApp.Windows
         Dim wFolderPath As String: wFolderPath = ""
         On Error Resume Next
-        wFolderPath = LCase(TrimTrailSlash(w.Document.Folder.Self.path))
+        wFolderPath = LCase(TrimTrailSlash(w.Document.folder.Self.path))
         On Error GoTo 0
         If wFolderPath = distNorm Then
             w.Visible = True
@@ -181,7 +181,7 @@ Sub BuildContextBundle()
             Exit For
         End If
     Next w
-    If openWin Then Shell "explorer.exe """ & distDir & """", vbNormalFocus
+    If openWin Then Shell "explorer.exe """ & DistDir & """", vbNormalFocus
 
     MsgBox "Context bundle written:" & vbLf & outPath & vbLf & vbLf & _
            charCount & " chars   ~" & tokenCount & " tokens   " & _
@@ -194,8 +194,8 @@ End Sub
 
 Private Function AssembleIndex(ByVal root As String, _
                                 ByRef foundCount As Long, _
-                                ByRef mapCount   As Long, _
-                                ByRef selCount   As Long) As String
+                                ByRef mapCount As Long, _
+                                ByRef selCount As Long) As String
     Dim sb As String: sb = ""
 
     ' 1. All concept files under _foundation/, sorted by filename ascending.
@@ -238,13 +238,13 @@ End Function
 ' -- Mode: bundle (BFS graph expansion) ------------------------------------------
 
 Private Function AssembleBundle(ByVal root As String, _
-                                 ByRef seeds()     As String, _
-                                 ByVal depth       As Long, _
-                                 ByVal direction   As String, _
-                                 ByVal viaHeading  As String, _
-                                 ByRef foundCount  As Long, _
-                                 ByRef mapCount    As Long, _
-                                 ByRef selCount    As Long) As String
+                                 ByRef seeds() As String, _
+                                 ByVal depth As Long, _
+                                 ByVal direction As String, _
+                                 ByVal viaHeading As String, _
+                                 ByRef foundCount As Long, _
+                                 ByRef mapCount As Long, _
+                                 ByRef selCount As Long) As String
 
     ' visited preserves insertion order (keys iterated in Add order).
     Dim visited As Object
@@ -291,7 +291,7 @@ Private Function AssembleBundle(ByVal root As String, _
                 Set fLinks = ExtractLinksScoped(ReadUtf8(fromAbs), viaHeading)
 
                 Dim lnk As Variant
-                For Each lnk In fLinks.Keys
+                For Each lnk In fLinks.keys
                     Dim resolved As String
                     resolved = ResolveLinkToRel(CStr(lnk), fromRel, root)
                     If resolved <> "" Then
@@ -332,25 +332,39 @@ NextFrontierItem:
                     If fso.FileExists(acAbs) Then
                         Dim acLinks As Object
                         Set acLinks = ExtractLinksScoped(ReadUtf8(acAbs), "")
+
+                        ' Copy keys to a local array to avoid error 10 on For Each.
+                        Dim acKeys As Variant
                         Dim acLnk As Variant
-                        For Each acLnk In acLinks.Keys
-                            Dim acResolved As String
-                            acResolved = ResolveLinkToRel(CStr(acLnk), acRel, root)
-                            If acResolved <> "" Then
-                                If frontSet.Exists(acResolved) Then
-                                    visited.Add acRel, True
-                                    If nfi > UBound(nextFrontier) Then _
-                                        ReDim Preserve nextFrontier(0 To nfi + 999)
-                                    nextFrontier(nfi) = acRel: nfi = nfi + 1
-                                    GoTo NextConcept
-                                End If
+                        Dim kIdx As Long
+
+                        If Not acLinks Is Nothing Then
+                            acKeys = acLinks.keys
+
+                            If IsArray(acKeys) Then
+                                For kIdx = LBound(acKeys) To UBound(acKeys)
+                                    acLnk = acKeys(kIdx)
+
+                                    Dim acResolved As String
+                                    acResolved = ResolveLinkToRel(CStr(acLnk), acRel, root)
+                                    If acResolved <> "" Then
+                                        If frontSet.Exists(acResolved) Then
+                                            visited.Add acRel, True
+                                            If nfi > UBound(nextFrontier) Then _
+                                                ReDim Preserve nextFrontier(0 To nfi + 999)
+                                            nextFrontier(nfi) = acRel: nfi = nfi + 1
+                                            GoTo NextConcept
+                                        End If
+                                    End If
+                                Next kIdx
                             End If
-                        Next acLnk
+                        End If
                     End If
                 End If
 NextConcept:
             Next ac
         End If
+
 
         If nfi > 0 Then
             ReDim Preserve nextFrontier(0 To nfi - 1)
@@ -363,7 +377,7 @@ NextConcept:
     ' Assemble all visited concepts in BFS insertion order.
     Dim sb As String: sb = ""
     Dim k As Variant
-    For Each k In visited.Keys
+    For Each k In visited.keys
         Dim kRel As String: kRel = CStr(k)
         Dim kAbs As String: kAbs = root & Replace(kRel, "/", "\")
         If fso.FileExists(kAbs) Then
@@ -371,8 +385,8 @@ NextConcept:
             sb = sb & MakeAnchor(kRel, ReadUtf8(kAbs), kLayer)
             Select Case kLayer
                 Case "foundation": foundCount = foundCount + 1
-                Case "map":        mapCount   = mapCount + 1
-                Case Else:         selCount   = selCount + 1
+                Case "map":        mapCount = mapCount + 1
+                Case Else:         selCount = selCount + 1
             End Select
         End If
     Next k
@@ -387,8 +401,8 @@ End Function
 Private Sub CollectConceptsRecursive(ByVal folder As Object, ByVal root As String, _
                                       ByRef files() As String, ByRef count As Long)
     Dim f As Object
-    For Each f In folder.Files
-        If IsConceptFile(f.Name) Then
+    For Each f In folder.files
+        If IsConceptFile(f.name) Then
             Dim rel As String: rel = Mid(f.path, Len(root) + 1)
             rel = Replace(rel, "\", "/")
             If count > UBound(files) Then ReDim Preserve files(0 To count + 999)
@@ -405,8 +419,8 @@ End Sub
 Private Sub CollectLinkSourcesRecursive(ByVal folder As Object, ByVal root As String, _
                                          ByRef files() As String, ByRef count As Long)
     Dim f As Object
-    For Each f In folder.Files
-        If IsLinkSourceFile(f.Name) Then
+    For Each f In folder.files
+        If IsLinkSourceFile(f.name) Then
             Dim rel As String: rel = Mid(f.path, Len(root) + 1)
             rel = Replace(rel, "\", "/")
             If count > UBound(files) Then ReDim Preserve files(0 To count + 999)
@@ -538,7 +552,7 @@ End Function
 ' Returns "" if the link is external, non-.md, or the target file doesn't exist.
 Private Function ResolveLinkToRel(ByVal link As String, _
                                    ByVal fromRel As String, _
-                                   ByVal root    As String) As String
+                                   ByVal root As String) As String
     Dim h As Long: h = InStr(link, "#")
     If h > 0 Then link = Left(link, h - 1)
     link = Trim(link)
