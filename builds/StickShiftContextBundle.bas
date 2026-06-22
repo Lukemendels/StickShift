@@ -1,13 +1,14 @@
-Attribute VB_Name = "OKFContextBundle"
+Attribute VB_Name = "StickShiftContextBundle"
 ' =====================================================================
-'  OKF Context Bundle  (conformant OKF v0.1 bundle assembler)
+'  StickShift Context Bundle — OKF-compliant
+'  (conformant OKF v0.1 bundle assembler)
 '
 '  Entry point: Sub BuildContextBundle()
 '
 '  Reads a <CONTEXT_REQUEST> from the clipboard, resolves it against
 '  the bundle (graph traversal included), assembles an anchored bundle,
-'  and writes it to a stable OKF-context.md file in the -dist sibling
-'  folder of the bundle root.
+'  and writes it to a stable StickShift-context.md file in the -dist
+'  sibling folder of the bundle root.
 '
 '  Modes:
 '    index  - Hop-1 opener: foundation + /index.md + /skills/index.md.
@@ -21,8 +22,8 @@ Attribute VB_Name = "OKFContextBundle"
 '  (Scripting.FileSystemObject / Dictionary / VBScript.RegExp are
 '  late-bound; no other references needed.)
 '
-'  Module-level dependencies: OKFConfig (BundleRoot, DistDir),
-'  OKFClipboard (GetClipboardText).  All leaf helpers (UTF-8 I/O,
+'  Module-level dependencies: StickShiftConfig (BundleRoot, DistDir),
+'  StickShiftClipboard (GetClipboardText).  All leaf helpers (UTF-8 I/O,
 '  link parsing, etc.) are private copies in this module.
 ' =====================================================================
 
@@ -31,7 +32,7 @@ Option Explicit
 Private Const OKF_VERSION    As String = "0.1"
 Private Const FOUNDATION_DIR As String = "_foundation"
 Private Const SKILLS_INDEX   As String = "skills/index.md"
-Private Const OUT_FILENAME   As String = "OKF-context.md"
+Private Const OUT_FILENAME   As String = "StickShift-context.md"
 
 Private fso As Object
 
@@ -40,18 +41,18 @@ Private fso As Object
 
 Sub BuildContextBundle()
 
-    ' 1. Bundle root via OKFConfig (prompts picker if not yet set).
+    ' 1. Bundle root via StickShiftConfig (prompts picker if not yet set).
     Dim root As String
-    root = OKFConfig.BundleRoot()
+    root = StickShiftConfig.BundleRoot()
     If root = "" Then
-        MsgBox "Bundle root not set - click Set Bundle Root.", vbExclamation, "OKF Context Bundle"
+        MsgBox "Bundle root not set - click Switch Context.", vbExclamation, "StickShift"
         Exit Sub
     End If
 
     Set fso = CreateObject("Scripting.FileSystemObject")
 
     If Not fso.FolderExists(root) Then
-        MsgBox "Bundle root not found: " & root, vbCritical, "OKF Context Bundle"
+        MsgBox "Bundle root not found: " & root, vbCritical, "StickShift"
         Exit Sub
     End If
 
@@ -117,7 +118,7 @@ Sub BuildContextBundle()
         assembled = AssembleIndex(root, foundCount, mapCount, selCount)
     Else
         If seedCount = 0 Then
-            MsgBox "No include: paths found in request.", vbExclamation, "OKF Context Bundle"
+            MsgBox "No include: paths found in request.", vbExclamation, "StickShift"
             Exit Sub
         End If
         Dim seedSlice() As String
@@ -147,10 +148,10 @@ Sub BuildContextBundle()
     Dim fullOutput As String: fullOutput = header & assembled
 
     ' 6. Write to -dist sibling folder (never inside the bundle root).
-    Dim DistDir As String: DistDir = OKFConfig.DistDir()
+    Dim DistDir As String: DistDir = StickShiftConfig.DistDir()
     If DistDir = "" Then
         MsgBox "Bundle root not set - cannot determine output directory.", _
-               vbCritical, "OKF Context Bundle"
+               vbCritical, "StickShift"
         Exit Sub
     End If
 
@@ -186,7 +187,7 @@ Sub BuildContextBundle()
     MsgBox "Context bundle written:" & vbLf & outPath & vbLf & vbLf & _
            charCount & " chars   ~" & tokenCount & " tokens   " & _
            totalConcepts & " concepts", _
-           vbInformation, "OKF Context Bundle"
+           vbInformation, "StickShift"
 End Sub
 
 
@@ -652,7 +653,7 @@ End Function
 Private Function ReadClipboard() As String
     On Error GoTo FailSafe
 
-    ReadClipboard = OKFClipboard.GetClipboardText()
+    ReadClipboard = StickShiftClipboard.GetClipboardText()
     Exit Function
 
 FailSafe:

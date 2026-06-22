@@ -1,22 +1,25 @@
-Attribute VB_Name = "OKFConfig"
+Attribute VB_Name = "StickShiftConfig"
 ' =====================================================================
-'  OKF Config  - single source of truth for the bundle root path
+'  StickShift Config — OKF-compliant
+'  Single source of truth for the context root path.
 '
 '  Stores the root in the Windows registry via VBA's SaveSetting /
-'  GetSetting API (HKCU\Software\VB and VBA Program Settings\OKF\Config).
+'  GetSetting API (HKCU\Software\VB and VBA Program Settings\StickShift\Config).
 '
 '  Public surface:
 '    BundleRoot()    - get the root (prompts picker if not yet set).
 '    SetBundleRoot() - folder-picker UI; saves and refreshes dashboard.
 '    BundleRootRaw() - non-prompting read; safe for dashboard display.
 '    DistDir()       - the -dist sibling of BundleRoot (created if absent).
+'
+'  Registry note: renaming REG_APP from "OKF" to "StickShift" orphans any
+'  root saved under the old key. Zero impact for a fresh user; existing
+'  users re-pick their context once after upgrading.
 ' =====================================================================
 
 Option Explicit
 
-Private Const DASH_SHEET       As String = "OKF Dashboard"
-Private Const DASH_ROOT_CELL   As String = "B21"
-Private Const REG_APP          As String = "OKF"
+Private Const REG_APP          As String = "StickShift"
 Private Const REG_SECTION      As String = "Config"
 Private Const REG_KEY          As String = "BundleRoot"
 
@@ -37,7 +40,7 @@ End Function
 Public Sub SetBundleRoot()
     Dim dlg As FileDialog
     Set dlg = Application.FileDialog(msoFileDialogFolderPicker)
-    dlg.Title = "Select OKF Bundle Root Folder"
+    dlg.Title = "Select StickShift Context Folder"
     dlg.AllowMultiSelect = False
 
     If dlg.Show <> -1 Then Exit Sub    ' user cancelled
@@ -48,14 +51,12 @@ Public Sub SetBundleRoot()
 
     SaveSetting REG_APP, REG_SECTION, REG_KEY, root
 
-    ' Refresh dashboard display if the sheet is open.
+    ' Refresh context display on dashboard if the sheet is present.
     On Error Resume Next
-    Dim ws As Worksheet
-    Set ws = ThisWorkbook.Sheets(DASH_SHEET)
-    If Not ws Is Nothing Then ws.Range(DASH_ROOT_CELL).Value = root
+    StickShiftDashboard.RefreshContextDisplay
     On Error GoTo 0
 
-    MsgBox "Bundle root set to:" & vbLf & root, vbInformation, "OKF Config"
+    MsgBox "Context set to:" & vbLf & root, vbInformation, "StickShift"
 End Sub
 
 

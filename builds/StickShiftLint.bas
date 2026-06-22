@@ -1,9 +1,10 @@
-Attribute VB_Name = "OKFLint"
+Attribute VB_Name = "StickShiftLint"
 ' =====================================================================
-'  OKF Lint  (deterministic integrity checker, no model, no mutation)
+'  StickShift Lint — OKF-compliant
+'  (deterministic integrity checker, no model, no mutation)
 '
 '  Scans every concept .md file under BUNDLE_ROOT and writes a
-'  colour-coded findings table to an "OKF Lint Report" worksheet.
+'  colour-coded findings table to a "StickShift Lint Report" worksheet.
 '  The report file is the worksheet - it lives inside the workbook,
 '  never as a .md file, so the generator never indexes it.
 '
@@ -18,7 +19,7 @@ Attribute VB_Name = "OKFLint"
 '
 '  Each finding: severity (error / warning), file, one-line description.
 '
-'  *** BUNDLE_ROOT must match the value in OKFIndexGenerator.bas ***
+'  *** BUNDLE_ROOT must match the value in StickShiftIndexGenerator.bas ***
 '
 '  Requires (Tools -> References): Microsoft ActiveX Data Objects 2.x
 ' =====================================================================
@@ -30,17 +31,17 @@ Private Const STALE_DAYS  As Long   = 14
 
 Private fso As Object
 
-Sub RunOKFLint()
-    m_BundleRoot = OKFConfig.BundleRoot()
+Sub RunStickShiftLint()
+    m_BundleRoot = StickShiftConfig.BundleRoot()
     If m_BundleRoot = "" Then
-        MsgBox "Bundle root not set - click Set Bundle Root.", vbExclamation, "OKF Lint"
+        MsgBox "Bundle root not set - click Switch Context.", vbExclamation, "StickShift"
         Exit Sub
     End If
 
     Set fso = CreateObject("Scripting.FileSystemObject")
 
     If Not fso.FolderExists(m_BundleRoot) Then
-        MsgBox "Bundle root not found: " & m_BundleRoot, vbCritical, "OKF Lint"
+        MsgBox "Bundle root not found: " & m_BundleRoot, vbCritical, "StickShift"
         Exit Sub
     End If
 
@@ -55,9 +56,9 @@ Sub RunOKFLint()
     If findings.count = 0 Then
         summary = "No findings - bundle is clean."
     Else
-        summary = findings.count & " finding(s). See 'OKF Lint Report' sheet."
+        summary = findings.count & " finding(s). See 'StickShift Lint Report' sheet."
     End If
-    MsgBox summary, vbInformation, "OKF Lint"
+    MsgBox summary, vbInformation, "StickShift"
 End Sub
 
 
@@ -376,7 +377,7 @@ End Sub
 
 
 Private Sub WriteReport(ByVal findings As Collection)
-    Dim sheetName As String: sheetName = "OKF Lint Report"
+    Dim sheetName As String: sheetName = "StickShift Lint Report"
 
     Dim ws As Worksheet
     On Error Resume Next

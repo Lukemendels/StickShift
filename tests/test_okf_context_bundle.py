@@ -377,7 +377,7 @@ def build_context_bundle(
     timestamp: str = FIXED_TS,
 ) -> str:
     """
-    Main entry: parse request, assemble bundle, return full OKF-context.md content.
+    Main entry: parse request, assemble bundle, return full StickShift-context.md content.
     Raises ValueError if bundle root does not exist.
     """
     if not bundle_root.exists():
@@ -717,8 +717,8 @@ class TestDeriveDistDir:
     def test_output_filename_constant(self, tmp_path: Path) -> None:
         root = tmp_path / "bundle"
         dist = derive_dist_dir(root)
-        out  = dist / "OKF-context.md"
-        assert out.name == "OKF-context.md"
+        out  = dist / "StickShift-context.md"
+        assert out.name == "StickShift-context.md"
         assert out.parent == dist
 
     def test_strips_trailing_slash(self, tmp_path: Path) -> None:
