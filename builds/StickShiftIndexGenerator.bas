@@ -1,6 +1,7 @@
-Attribute VB_Name = "OKFIndexGenerator"
+Attribute VB_Name = "StickShiftIndexGenerator"
 ' =====================================================================
-'  OKF Index Generator  (conformant OKF v0.1 producer)
+'  StickShift Index Generator — OKF-compliant
+'  (conformant OKF v0.1 producer)
 '
 '  Walks a bundle tree and (re)writes an index.md in every directory,
 '  per SPEC.md Sec.6:
@@ -43,17 +44,17 @@ Private Const GROUP_ORDER As String = "working,boilerplate,spec,idea,parked,prod
 
 Private fso As Object
 
-Sub GenerateOKFIndexes()
-    m_BundleRoot = OKFConfig.BundleRoot()
+Sub GenerateStickShiftIndexes()
+    m_BundleRoot = StickShiftConfig.BundleRoot()
     If m_BundleRoot = "" Then
-        MsgBox "Bundle root not set - click Set Bundle Root.", vbExclamation, "OKF Index Generator"
+        MsgBox "Bundle root not set - click Switch Context.", vbExclamation, "StickShift"
         Exit Sub
     End If
 
     Set fso = CreateObject("Scripting.FileSystemObject")
 
     If Not fso.FolderExists(m_BundleRoot) Then
-        MsgBox "Bundle root not found: " & m_BundleRoot, vbCritical, "OKF Index Generator"
+        MsgBox "Bundle root not found: " & m_BundleRoot, vbCritical, "StickShift"
         Exit Sub
     End If
 
@@ -374,7 +375,7 @@ Private Sub SortStringArray(ByRef arr() As String)
 End Sub
 
 
-' --- UTF-8 I/O (Private: no clash if imported alongside OKFContextBundle). ---
+' --- UTF-8 I/O (Private: no clash if imported alongside StickShiftContextBundle). ---
 Private Function ReadUtf8(ByVal path As String) As String
     Dim st As Object
     Set st = CreateObject("ADODB.Stream")

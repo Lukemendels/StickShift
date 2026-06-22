@@ -1,9 +1,10 @@
-Attribute VB_Name = "OKFClipboard"
+Attribute VB_Name = "StickShiftClipboard"
 ' =====================================================================
-'  OKF Clipboard  -- shared Win-API clipboard reader
+'  StickShift Clipboard — OKF-compliant
+'  Shared Win-API clipboard reader.
 '
 '  Provides GetClipboardText(), a reliable Unicode-aware clipboard
-'  reader used by both OKFWriteApply and OKFContextBundle.
+'  reader used by both StickShiftWriteApply and StickShiftContextBundle.
 '
 '  All Win32 Declare statements and format constants are Private to
 '  this module; only GetClipboardText is Public.

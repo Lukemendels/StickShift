@@ -1,6 +1,6 @@
-Attribute VB_Name = "OKFWriteApply"
+Attribute VB_Name = "StickShiftWriteApply"
 ' =====================================================================
-'  OKF Write Apply  (conformant OKF v0.1 writer)
+'  StickShift Write Apply  (conformant OKF v0.1 writer)
 '
 '  Reads a <VBA_WRITE> envelope from the clipboard (output of the
 '  Portfolio Writer DHSChat Assistant), parses each ### FILE: block,
@@ -10,17 +10,17 @@ Attribute VB_Name = "OKFWriteApply"
 '  write block. Every write is appended to the bundle-root log.md as
 '  an append-only audit trail: action = new | edit.
 '
-'  After applying, calls GenerateOKFIndexes so new builds appear in
-'  the index immediately.
+'  After applying, calls GenerateStickShiftIndexes so new builds appear
+'  in the index immediately.
 '
-'  Requires: OKFClipboard module (GetClipboardText), OKFConfig module,
-'  OKFIndexGenerator module.
+'  Requires: StickShiftClipboard module (GetClipboardText),
+'            StickShiftConfig module, StickShiftIndexGenerator module.
 '  Microsoft ActiveX Data Objects 2.x (ADODB.Stream for UTF-8 I/O).
 '
-'  OKFConfig         -> BundleRoot, BundleRootRaw, SetBundleRoot
-'  OKFWriteApply     -> ApplyOKFWrite, ApplyWriteEnvelopeText
-'  OKFIndexGenerator -> GenerateOKFIndexes
-'  OKFBootstrap      -> BootstrapBundle
+'  StickShiftConfig         -> BundleRoot, BundleRootRaw, SetBundleRoot
+'  StickShiftWriteApply     -> ApplyStickShiftWrite, ApplyWriteEnvelopeText
+'  StickShiftIndexGenerator -> GenerateStickShiftIndexes
+'  StickShiftBootstrap      -> BootstrapBundle
 ' =====================================================================
 
 Option Explicit
@@ -33,14 +33,14 @@ Private fso As Object
 ' Parses a <VBA_WRITE> envelope string, writes its ### FILE blocks (honoring the
 ' index.md/log.md reserved guard), logs each write to log.md, and returns a
 ' summary string "(N written, M skipped)". Self-contained: sets m_BundleRoot
-' from OKFConfig.BundleRoot() so the private helpers (ResolvePath / WriteUtf8 /
-' AppendEditLog) work regardless of caller.
+' from StickShiftConfig.BundleRoot() so the private helpers (ResolvePath /
+' WriteUtf8 / AppendEditLog) work regardless of caller.
 Public Function ApplyWriteEnvelopeText(ByVal envelope As String, _
                                         ByRef writeCount As Long, _
                                         ByRef skipCount As Long) As Boolean
-    m_BundleRoot = OKFConfig.BundleRoot()
+    m_BundleRoot = StickShiftConfig.BundleRoot()
     If m_BundleRoot = "" Then
-        MsgBox "Bundle root not set - click Set Bundle Root.", vbExclamation, "OKF Write Apply"
+        MsgBox "Bundle root not set - click Switch Context.", vbExclamation, "StickShift"
         ApplyWriteEnvelopeText = False
         Exit Function
     End If
@@ -48,7 +48,7 @@ Public Function ApplyWriteEnvelopeText(ByVal envelope As String, _
     Set fso = CreateObject("Scripting.FileSystemObject")
 
     If Not fso.FolderExists(m_BundleRoot) Then
-        MsgBox "Bundle root not found: " & m_BundleRoot, vbCritical, "OKF Write Apply"
+        MsgBox "Bundle root not found: " & m_BundleRoot, vbCritical, "StickShift"
         ApplyWriteEnvelopeText = False
         Exit Function
     End If
@@ -155,19 +155,19 @@ Public Function ApplyWriteEnvelopeText(ByVal envelope As String, _
 End Function
 
 
-Sub ApplyOKFWrite()
+Sub ApplyStickShiftWrite()
     ' Early root + folder check so the clipboard is never read unnecessarily.
     Dim rootCheck As String
-    rootCheck = OKFConfig.BundleRoot()
+    rootCheck = StickShiftConfig.BundleRoot()
     If rootCheck = "" Then
-        MsgBox "Bundle root not set - click Set Bundle Root.", vbExclamation, "OKF Write Apply"
+        MsgBox "Bundle root not set - click Switch Context.", vbExclamation, "StickShift"
         Exit Sub
     End If
 
     Set fso = CreateObject("Scripting.FileSystemObject")
 
     If Not fso.FolderExists(rootCheck) Then
-        MsgBox "Bundle root not found: " & rootCheck, vbCritical, "OKF Write Apply"
+        MsgBox "Bundle root not found: " & rootCheck, vbCritical, "StickShift"
         Exit Sub
     End If
 
@@ -188,10 +188,10 @@ Sub ApplyOKFWrite()
         If s > 0 Then
             summary = summary & vbLf & s & " reserved file(s) skipped (log.md / index.md)."
         End If
-        MsgBox summary, vbInformation, "OKF Write Apply"
+        MsgBox summary, vbInformation, "StickShift"
 
         ' Regenerate index so new builds appear immediately.
-        GenerateOKFIndexes
+        StickShiftIndexGenerator.GenerateStickShiftIndexes
     End If
 End Sub
 
@@ -222,7 +222,7 @@ End Function
 Private Function ReadClipboard() As String
     On Error GoTo FailSafe
 
-    ReadClipboard = OKFClipboard.GetClipboardText()
+    ReadClipboard = StickShiftClipboard.GetClipboardText()
     Exit Function
 
 FailSafe:
