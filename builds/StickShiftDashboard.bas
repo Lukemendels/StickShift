@@ -1,16 +1,16 @@
 Attribute VB_Name = "StickShiftDashboard"
 ' =====================================================================
-'  StickShift Dashboard — one-time setup for a macro-button control panel
+'  StickShift Dashboard -- one-time setup for a macro-button control panel
 '
 '  Run CreateStickShiftDashboard once to build the "StickShift" sheet.
 '  Re-run at any time to reset the sheet (e.g. after importing into a
-'  new workbook). The sheet itself has no persistent state — it is a
+'  new workbook). The sheet itself has no persistent state -- it is a
 '  pure UI layer over the macros.
 '
 '  Public surface used by other modules:
-'    CONTEXT_CELL        — cell address where the current context path lives
-'    RefreshContextDisplay — rewrites CONTEXT_CELL from BundleRootRaw()
-'    ShowStickShiftReadme  — renders README into the "Read Me" sheet
+'    CONTEXT_CELL        -- cell address where the current context path lives
+'    RefreshContextDisplay -- rewrites CONTEXT_CELL from BundleRootRaw()
+'    ShowStickShiftReadme  -- renders README into the "Read Me" sheet
 '
 '  Requires the other modules in the same workbook:
 '    StickShiftConfig         -> BundleRootRaw, SetBundleRoot
