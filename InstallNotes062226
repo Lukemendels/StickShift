@@ -1,0 +1,54 @@
+ReadMe can fit on the main screen?
+
+Maybe even a setup mode.
+
+Macros that you step through. Tutorial that installs one button at a time.
+
+When you first open the .xlsx file, you see Initial Setup - Skip Setup
+
+When you walk through the flow, you have a button that says Skip Setup the entire time.
+
+Text explains each button. Then when you do the step, it fires a macro that does the action and then installs the next button and text for the next step, deleting the text explainer from the previous button.
+
+No emojis, No ChrW
+
+Think about the most used buttons in a well oiled stickshift cockpit - they need to make sense.
+
+Also - initialize context is only needed for the tutorial
+
+
+Build Context - Apply Write Envelope First Class - used on every loop - 
+Switch Context : Second Class - used less frequently - but like the parking brake
+Regenerate Index: Only really needed if human writes changes into the files. 
+Run Linter: This is the engine warning light
+
+Current buttons Say 1 -5 and are vertical - drop that.
+
+need to see the buttons left to right 
+
+Like this:
+
+Build Context Bundle			Apply Write Envelope
+
+
+
+			Initialize Context
+
+
+
+Regenerate Index				Run Linter
+
+
+Okay - reading through the Readme - Right now it does initialize context - then says build context bundle is a response to a CONTEXT_REQUEST block. Not solely true. Also the thing you do when first initializing the context and loading in the foundational context files.
+
+Skill needs to be added to the install
+
+Interviewer that gets information about the person and their role and how they want to use the agent
+
+Then stores the foundational files 
+
+SKill-md-authoring is a great skill to have preloaded, and will be helpful to explain that if you want the agent to remember how to do something specific, you can ask it to write a Skill and the agent will remember to pull the skill file the next time it encounters something similar, but not the first time user experience.
+
+I am starting to flesh out the UX here, but you need to think through every single user click as they install when you make your revision pass
+
+
