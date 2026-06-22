@@ -1,6 +1,6 @@
 Attribute VB_Name = "StickShiftLint"
 ' =====================================================================
-'  StickShift Lint — OKF-compliant
+'  StickShift Lint - OKF-compliant
 '  (deterministic integrity checker, no model, no mutation)
 '
 '  Scans every concept .md file under BUNDLE_ROOT and writes a

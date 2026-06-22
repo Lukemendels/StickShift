@@ -1,6 +1,6 @@
 Attribute VB_Name = "StickShiftConfig"
 ' =====================================================================
-'  StickShift Config — OKF-compliant
+'  StickShift Config - OKF-compliant
 '  Single source of truth for the context root path.
 '
 '  Stores the root in the Windows registry via VBA's SaveSetting /
