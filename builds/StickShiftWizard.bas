@@ -109,7 +109,7 @@ Public Sub SetWizardState(ByVal stateVal As String)
     On Error Resume Next
     ThisWorkbook.Names(STATE_NAME).Delete
     On Error GoTo 0
-    ThisWorkbook.Names.Add Name:=STATE_NAME, RefersTo:="=""" & stateVal & """"
+    ThisWorkbook.Names.Add name:=STATE_NAME, RefersTo:="=""" & stateVal & """"
 End Sub
 
 
@@ -148,10 +148,10 @@ Private Sub RenderWizard(ByVal step As Long)
             Exit Sub
         End If
         Set ws = ThisWorkbook.Sheets.Add(Before:=ThisWorkbook.Sheets(1))
-        ws.Name = SHEET_NAME
+        ws.name = SHEET_NAME
     Else
         ws.Cells.Clear
-        Do While ws.Shapes.Count > 0
+        Do While ws.Shapes.count > 0
             ws.Shapes(1).Delete
         Loop
     End If
@@ -311,15 +311,15 @@ End Function
 Private Function CoachText(ByVal step As Long) As String
     Select Case step
         Case 1
-            CoachText = "Point StickShift at a folder. Click Switch Context and pick or make one, e.g. C:\StickShift."
+            CoachText = "Point StickShift at a folder. Click Select Context and pick or make one, e.g. C:\StickShift."
         Case 2
             CoachText = "Seed this folder with starter files - including two skills the agent can use. Click Initialize Context."
         Case 3
-            CoachText = "Now the loop. In your AI chat ask: 'Run the setup interview skill.' The AI replies with a <CONTEXT_REQUEST>. Copy the whole block, then click Build Context Bundle and paste the result back into the chat."
+            CoachText = "Now the loop. First click Build Context Bundle. Grab the resulting 'StickShift-context.md' file in the folder that just popped up and drop it into DHSChat hit enter. In chat ask: 'Run the setup interview skill.' The AI replies with a <CONTEXT_REQUEST>. Copy the whole block, then click Build Context Bundle again and paste the resulting new 'StickShift-context' file back into the chat."
         Case 4
             CoachText = "The AI interviews you, then returns a <VBA_WRITE> block with your profile. Copy it, click Apply Write Envelope, and it writes _foundation/00-operating-profile.md."
         Case 5
-            CoachText = "That was a skill - a written procedure the agent followed. From now on you can ask it to write a skill for anything you do repeatedly, and it will reuse it next time. Setup is done."
+            CoachText = "That was a skill - a written procedure the agent followed. From now on you can ask it to write a skill for anything you do repeatedly, and StickShift will load and reuse the Skill next time. Setup is done."
         Case Else
             CoachText = ""
     End Select
@@ -334,11 +334,11 @@ Private Sub AddWizardButton(ByVal s As Object, ByVal shapeName As String, _
                               ByVal macroName As String, ByVal btnColor As Long, _
                               ByVal cap As String)
     With s
-        .Name = shapeName
+        .name = shapeName
         .OnAction = macroName
         .Fill.ForeColor.RGB = btnColor
         .Fill.Solid
-        .Line.Visible = msoFalse
+        .line.Visible = msoFalse
         On Error Resume Next
         .Adjustments(1) = 0.18
         On Error GoTo 0
@@ -418,4 +418,10 @@ End Sub
 Public Sub SkipSetup()
     SetWizardState "skipped"
     StickShiftDashboard.CreateStickShiftDashboard
+End Sub
+
+Public Sub ReenableWizard()
+    ' Reset wizard to first step and relaunch the wizard UI
+    SetWizardState "step:1"
+    Auto_Open
 End Sub
