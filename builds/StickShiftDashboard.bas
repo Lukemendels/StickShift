@@ -67,7 +67,7 @@ Sub CreateStickShiftDashboard()
             Exit Sub
         End If
         Set ws = ThisWorkbook.Sheets.Add(Before:=ThisWorkbook.Sheets(1))
-        ws.Name = SHEET_NAME
+        ws.name = SHEET_NAME
     Else
         ws.Cells.Clear
         Dim shp As Object
@@ -103,8 +103,10 @@ Sub CreateStickShiftDashboard()
     ws.Rows("14").RowHeight = 14     ' divider
     ws.Rows("15").RowHeight = 38     ' Initialize Context (demoted)
     ws.Rows("16").RowHeight = 28     ' Initialize Context label
-    ws.Rows("17").RowHeight = 16     ' footer
-    ws.Rows("18").RowHeight = 8      ' bottom padding
+    ws.Rows("17").RowHeight = 38     ' Restart Setup Wizard (demoted)
+    ws.Rows("18").RowHeight = 28     ' Restart Setup Wizard label
+    ws.Rows("19").RowHeight = 16     ' footer
+    ws.Rows("20").RowHeight = 8      ' bottom padding
 
     ' -- Background --
     ws.Cells.Interior.Color = RGB(248, 250, 252)
@@ -194,8 +196,13 @@ Sub CreateStickShiftDashboard()
         "First-time setup: seeds a new, empty context." & vbLf & _
         "(Moves into the setup wizard later.)"
 
+    ' -- Restart Setup Wizard (demoted) --
+    MakeDemotedButton ws, 17, _
+        "Restart Setup Wizard", "ReenableWizard", RGB(71, 85, 105), _
+        "Reset and rerun the guided setup wizard from Step 1."
+
     ' -- Footer --
-    Set r = ws.Range("B17:D17"): r.Merge
+    Set r = ws.Range("B19:D19"): r.Merge
     r.Value = "Part of StickShift"
     r.Font.Size = 8: r.Font.Color = RGB(148, 163, 184)
     r.VerticalAlignment = xlVAlignCenter
@@ -204,6 +211,7 @@ Sub CreateStickShiftDashboard()
     ws.Range("A1").Select
     MsgBox "StickShift dashboard ready.", vbInformation, "StickShift"
 End Sub
+
 
 
 Public Sub RefreshContextDisplay()
@@ -232,20 +240,20 @@ Private Sub MakeSideBySideButtons(ByVal ws As Object, ByVal btnRow As Long, _
     ByVal cap1 As String, ByVal macro1 As String, ByVal color1 As Long, ByVal desc1 As String, _
     ByVal cap2 As String, ByVal macro2 As String, ByVal color2 As Long, ByVal desc2 As String)
 
-    Const INSET As Double = 4
+    Const inset As Double = 4
 
     Dim cellL As Object: Set cellL = ws.Cells(btnRow, 2)
     Dim sL As Object
     Set sL = ws.Shapes.AddShape(msoShapeRoundedRectangle, _
-                                 cellL.Left + INSET, cellL.Top + INSET, _
-                                 cellL.Width - INSET * 2, cellL.Height - INSET * 2)
+                                 cellL.Left + inset, cellL.Top + inset, _
+                                 cellL.Width - inset * 2, cellL.Height - inset * 2)
     SetupButton sL, "btn_" & macro1, macro1, color1, cap1
 
     Dim cellR As Object: Set cellR = ws.Cells(btnRow, 4)
     Dim sR As Object
     Set sR = ws.Shapes.AddShape(msoShapeRoundedRectangle, _
-                                 cellR.Left + INSET, cellR.Top + INSET, _
-                                 cellR.Width - INSET * 2, cellR.Height - INSET * 2)
+                                 cellR.Left + inset, cellR.Top + inset, _
+                                 cellR.Width - inset * 2, cellR.Height - inset * 2)
     SetupButton sR, "btn_" & macro2, macro2, color2, cap2
 
     StyleDesc ws.Cells(btnRow + 1, 2), color1, desc1
@@ -257,7 +265,7 @@ Private Sub MakeCenteredButton(ByVal ws As Object, ByVal btnRow As Long, _
     ByVal cap As String, ByVal macroName As String, ByVal btnColor As Long, _
     ByVal descText As String)
 
-    Const INSET As Double = 4
+    Const inset As Double = 4
 
     Dim cellL As Object: Set cellL = ws.Cells(btnRow, 2)
     Dim cellR As Object: Set cellR = ws.Cells(btnRow, 4)
@@ -266,8 +274,8 @@ Private Sub MakeCenteredButton(ByVal ws As Object, ByVal btnRow As Long, _
 
     Dim s As Object
     Set s = ws.Shapes.AddShape(msoShapeRoundedRectangle, _
-                                cellL.Left + INSET, cellL.Top + INSET, _
-                                totalWidth - INSET * 2, cellL.Height - INSET * 2)
+                                cellL.Left + inset, cellL.Top + inset, _
+                                totalWidth - inset * 2, cellL.Height - inset * 2)
     SetupButton s, "btn_" & macroName, macroName, btnColor, cap
 
     Dim descRange As Object
@@ -297,7 +305,7 @@ Private Sub MakeDemotedButton(ByVal ws As Object, ByVal btnRow As Long, _
     ByVal cap As String, ByVal macroName As String, ByVal btnColor As Long, _
     ByVal labelText As String)
 
-    Const INSET As Double = 4
+    Const inset As Double = 4
     Const DEMOTE_INSET As Double = 30
 
     Dim cellL As Object: Set cellL = ws.Cells(btnRow, 2)
@@ -307,8 +315,8 @@ Private Sub MakeDemotedButton(ByVal ws As Object, ByVal btnRow As Long, _
 
     Dim s As Object
     Set s = ws.Shapes.AddShape(msoShapeRoundedRectangle, _
-                                cellL.Left + DEMOTE_INSET, cellL.Top + INSET, _
-                                totalWidth - DEMOTE_INSET * 2, cellL.Height - INSET * 2)
+                                cellL.Left + DEMOTE_INSET, cellL.Top + inset, _
+                                totalWidth - DEMOTE_INSET * 2, cellL.Height - inset * 2)
     SetupButton s, "btn_" & macroName, macroName, btnColor, cap
     s.TextFrame2.TextRange.Font.Size = 9
 
@@ -330,11 +338,11 @@ Private Sub SetupButton(ByVal s As Object, ByVal shapeName As String, _
                          ByVal macroName As String, ByVal btnColor As Long, _
                          ByVal cap As String)
     With s
-        .Name = shapeName
+        .name = shapeName
         .OnAction = macroName
         .Fill.ForeColor.RGB = btnColor
         .Fill.Solid
-        .Line.Visible = msoFalse
+        .line.Visible = msoFalse
         On Error Resume Next
         .Adjustments(1) = 0.18
         On Error GoTo 0
