@@ -95,11 +95,11 @@ Sub CreateStickShiftDashboard()
     ws.Rows("6").RowHeight = 22      ' context value (CONTEXT_CELL)
     ws.Rows("7").RowHeight = 10      ' gap before grid
     ws.Rows("8").RowHeight = 46      ' grid row 1 buttons
-    ws.Rows("9").RowHeight = 38      ' grid row 1 descriptions
+    ws.Rows("9").RowHeight = 60      ' grid row 1 descriptions
     ws.Rows("10").RowHeight = 46     ' grid row 2 (Switch Context centered)
     ws.Rows("11").RowHeight = 38     ' grid row 2 description
     ws.Rows("12").RowHeight = 46     ' grid row 3 buttons
-    ws.Rows("13").RowHeight = 38     ' grid row 3 descriptions
+    ws.Rows("13").RowHeight = 60     ' grid row 3 descriptions
     ws.Rows("14").RowHeight = 14     ' divider
     ws.Rows("15").RowHeight = 38     ' Initialize Context (demoted)
     ws.Rows("16").RowHeight = 28     ' Initialize Context label
