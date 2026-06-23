@@ -31,3 +31,11 @@ jobs:
             exit 1
           fi
           echo "ASCII guard passed."
+
+      - name: ChrW guard (builds/*.bas must not use ChrW)
+        run: |
+          if grep -rIn "ChrW" builds/*.bas; then
+            echo "ChrW found in builds/*.bas - use plain ASCII literals" >&2
+            exit 1
+          fi
+          echo "ChrW guard passed."
