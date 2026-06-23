@@ -34,8 +34,8 @@ Public Sub BootstrapBundle()
     End If
 
     ' --- 1. Build the full seed list ---
-    Dim seedPaths(0 To 2) As String
-    Dim seedContents(0 To 2) As String
+    Dim seedPaths(0 To 3) As String
+    Dim seedContents(0 To 3) As String
 
     seedPaths(0) = "_foundation/00-operating-profile.md"
     seedContents(0) = SeedOperatingProfile()
@@ -45,6 +45,9 @@ Public Sub BootstrapBundle()
 
     seedPaths(2) = "skills/skill-md-authoring.md"
     seedContents(2) = SeedSkillMdAuthoring()
+
+    seedPaths(3) = "skills/setup-interview.md"
+    seedContents(3) = SeedSetupInterview()
 
     ' --- 2. Create-if-absent filter ---
     Dim fso As Object
@@ -57,13 +60,13 @@ Public Sub BootstrapBundle()
         rootFwd = rootFwd & "\"
     End If
 
-    Dim keepPaths(0 To 2) As String
-    Dim keepContents(0 To 2) As String
+    Dim keepPaths(0 To 3) As String
+    Dim keepContents(0 To 3) As String
     Dim keepCount As Long: keepCount = 0
 
     Dim i As Long
     Dim absPath As String
-    For i = 0 To 2
+    For i = 0 To 3
         Dim rel As String
         rel = Replace(seedPaths(i), "/", "\")
         absPath = rootFwd & rel
@@ -648,6 +651,81 @@ Private Function SeedSkillMdAuthoring() As String
     s = s & "" & vbLf
     s = s & "---" & vbLf
     SeedSkillMdAuthoring = s
+End Function
+
+
+Private Function SeedSetupInterview() As String
+    Dim s As String
+    s = "---" & vbLf
+    s = s & "okf_version: ""0.1""" & vbLf
+    s = s & "type: Skill" & vbLf
+    s = s & "title: Setup Interview" & vbLf
+    s = s & "description: Interviews a new user about who they are, their role, the domain this context covers, and how they want the assistant to behave, then produces a completed _foundation/00-operating-profile.md. Use this skill on first setup, or whenever the user wants to (re)establish the foundational operating profile." & vbLf
+    s = s & "tags: [skill, onboarding, setup]" & vbLf
+    s = s & "---" & vbLf
+    s = s & "" & vbLf
+    s = s & "# setup-interview" & vbLf
+    s = s & "" & vbLf
+    s = s & "## Purpose" & vbLf
+    s = s & "" & vbLf
+    s = s & "This skill guides the assistant through a short structured interview to learn who" & vbLf
+    s = s & "you are, what this context covers, and how you want the assistant to behave. At the" & vbLf
+    s = s & "end it writes a completed _foundation/00-operating-profile.md that the assistant" & vbLf
+    s = s & "reads at the start of every session." & vbLf
+    s = s & "" & vbLf
+    s = s & "## When to use this skill" & vbLf
+    s = s & "" & vbLf
+    s = s & "- First run: when the operating profile is still a TODO stub." & vbLf
+    s = s & "- Any time you want to redo or update the foundational operating profile from scratch." & vbLf
+    s = s & "" & vbLf
+    s = s & "## The interview" & vbLf
+    s = s & "" & vbLf
+    s = s & "Ask the user the questions below a few at a time, in a natural conversational order." & vbLf
+    s = s & "Keep each question concise. If the user declines to answer or is unsure, infer a" & vbLf
+    s = s & "sensible default and note the assumption in the output file." & vbLf
+    s = s & "" & vbLf
+    s = s & "1. What is your name and role or title?" & vbLf
+    s = s & "2. What domain does this context cover? (For example: a project, a business area," & vbLf
+    s = s & "   a personal portfolio, or a research topic.)" & vbLf
+    s = s & "3. What are the 2-4 things you most want the assistant to help you with here?" & vbLf
+    s = s & "4. Are there key constraints or priorities the assistant must respect?" & vbLf
+    s = s & "   (For example: tone, confidentiality, scope limits, or decision authority.)" & vbLf
+    s = s & "5. Do you have standing preferences for how the assistant works with you?" & vbLf
+    s = s & "   (For example: preferred tone, output format, level of detail, or decision style.)" & vbLf
+    s = s & "" & vbLf
+    s = s & "## Output" & vbLf
+    s = s & "" & vbLf
+    s = s & "When the interview is complete, return exactly one write envelope and nothing else --" & vbLf
+    s = s & "no preamble, no summary, no follow-up prose outside the envelope. The envelope must" & vbLf
+    s = s & "contain a single file block writing _foundation/00-operating-profile.md, filled with" & vbLf
+    s = s & "all values collected above." & vbLf
+    s = s & "" & vbLf
+    s = s & "Envelope structure: open the VBA_WRITE tag, then a FILE header line giving the" & vbLf
+    s = s & "relative path, the file content, the END FILE marker, then close the VBA_WRITE tag." & vbLf
+    s = s & "" & vbLf
+    s = s & "The output file frontmatter must keep:" & vbLf
+    s = s & "  type: Foundation" & vbLf
+    s = s & "  title: Operating Profile" & vbLf
+    s = s & "" & vbLf
+    s = s & "Fill in the following fields in the file body (matching what the TODO stub lists):" & vbLf
+    s = s & "  - name/role" & vbLf
+    s = s & "  - domain" & vbLf
+    s = s & "  - constraints and priorities" & vbLf
+    s = s & "  - standing preferences (tone, output format, decision style)" & vbLf
+    s = s & "" & vbLf
+    s = s & "## After" & vbLf
+    s = s & "" & vbLf
+    s = s & "Tell the user: ""You just used a skill -- a written procedure the assistant followed" & vbLf
+    s = s & "step by step. Going forward, you can ask the assistant to write a skill for any task" & vbLf
+    s = s & "you repeat regularly. It will pull the relevant skill the next time it sees a matching" & vbLf
+    s = s & "request (though not the very first time, before the skill exists).""" & vbLf
+    s = s & "" & vbLf
+    s = s & "## Edge cases" & vbLf
+    s = s & "" & vbLf
+    s = s & "If the user provides very little information, write a minimal but valid profile and" & vbLf
+    s = s & "note the assumptions inline, for example ""(assumed from context)"" or" & vbLf
+    s = s & """(default -- please update)""." & vbLf
+    SeedSetupInterview = s
 End Function
 
 

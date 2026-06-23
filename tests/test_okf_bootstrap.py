@@ -12,6 +12,7 @@ SEED_PATHS = [
     "_foundation/00-operating-profile.md",
     "builds/example-build.md",
     "skills/skill-md-authoring.md",
+    "skills/setup-interview.md",
 ]
 
 
@@ -26,6 +27,7 @@ def test_partial_bundle_returns_missing_only() -> None:
     assert result == [
         "_foundation/00-operating-profile.md",
         "builds/example-build.md",
+        "skills/setup-interview.md",
     ]
 
 
