@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Project Board - StickShift</title>
+
+<!-- ===== Embedded companion skill (install extracts this) ===== -->
+<script type="text/markdown" id="stickshift-skill" data-skill-slug="project-board">
+---
+type: Skill
+okf_version: "0.1"
+title: Project Board
+description: Recall, draft, and update project state stored in OKF as a board folder (board.md + one shard per task). Show it visually by opening project-board.html; the operator pastes the board bundle and the tool renders a kanban view. Update two ways - a surgical direct VBA_WRITE for one change, or hand the tool a packet for bulk drafting and visual arrangement. The tool re-shards and exports only what changed. Indexes are never hand-written.
+tags:
+  - project-management
+  - html-tool
+  - state-recall
+---
+
+# Skill: Project Board
+
+State lives under projects/<slug>/: board.md (title + ordered columns) and
+tasks/T-NNNN.md (one shard per task). index.md is auto-generated - never write it.
+
+Task shard frontmatter: type: Task, id (the fixed identity), title,
+status (must be one of board.columns), and optional assignee, due (ISO), priority
+(high|normal|low). Body is markdown with an optional "- [ ]" checklist. Preserve
+any field you do not recognize.
+
+Recall: emit one <CONTEXT_REQUEST> for the board folder, nothing else.
+Show: emit one <HTML_OPEN> for project-board.html, nothing else.
+
+Update - two paths:
+  Path A (surgical): one change -> emit one <VBA_WRITE> rewriting just the shard.
+  Path B (visual/bulk): draft tasks, let the operator import and save in the tool.
+Use A for one or two edits; B when the change is large or spatial.
+
+Drafting new tasks: give each a placeholder id T-NEW-1, T-NEW-2, ... The tool is
+the id authority and assigns real sequential ids on import, so ids never collide.
+Show drafts as "### FILE:"-delimited shards so the operator reads before importing.
+
+Never write index.md. Never set a status outside board.columns. Never drop an
+unrecognized field. Never rewrite the whole board when one shard changed.
+</script>
+
+<style>
+:root{
+  --paper:#f4f4f0; --surface:#ffffff; --ink:#1b1e23; --ink-soft:#5a616b;
+  --line:#e0e0d8; --line-strong:#cfcfc6; --accent:#b8541f; --accent-soft:#f0e2d8;
+  --due-late:#b3261e; --hi:#b8541f; --norm:#8a909a; --lo:#c2c6cc;
+  --shadow:0 1px 2px rgba(20,24,30,.06),0 2px 8px rgba(20,24,30,.04);
+  --mono:ui-monospace,"Cascadia Code","SFMono-Regular",Consolas,"Liberation Mono",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,Roboto,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{
+  background:var(--paper);color:var(--ink);font-family:var(--sans);
+  font-size:14px;line-height:1.45;display:flex;flex-direction:column;
+}
+button{font-family:inherit;font-size:13px;cursor:pointer;border-radius:6px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);padding:7px 12px}
+button:hover{border-color:var(--ink-soft)}
+button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.btn-primary:hover{background:#a2491b;border-color:#a2491b}
+input,textarea,select{font-family:inherit;font-size:13px;color:var(--ink);background:var(--surface);border:1px solid var(--line-strong);border-radius:6px;padding:7px 9px;width:100%}
+textarea{resize:vertical;line-height:1.5}
+label{display:block;font-size:11px;font-weight:600;letter-spacing:.03em;text-transform:uppercase;color:var(--ink-soft);margin:0 0 4px}
+
+/* top bar */
+header{display:flex;align-items:center;gap:14px;padding:12px 18px;background:var(--surface);border-bottom:1px solid var(--line-strong)}
+.brand{font-weight:700;letter-spacing:-.01em;font-size:15px;white-space:nowrap}
+.brand .gear{color:var(--accent)}
+#boardTitle{font-weight:600;font-size:14px;border:1px solid transparent;background:transparent;max-width:340px}
+#boardTitle:hover{border-color:var(--line)}
+.stamp{font-family:var(--mono);font-size:11px;color:var(--ink-soft);white-space:nowrap}
+.spacer{flex:1}
+header .actions{display:flex;gap:8px}
+
+/* board */
+main{flex:1;overflow:auto;padding:18px}
+#board{display:flex;gap:14px;align-items:flex-start;min-height:100%}
+.col{flex:0 0 274px;background:rgba(255,255,255,.5);border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;max-height:100%}
+.col-head{display:flex;align-items:center;gap:8px;padding:11px 12px 9px;border-bottom:1px solid var(--line)}
+.col-name{font-weight:600;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-soft)}
+.col-count{font-family:var(--mono);font-size:11px;color:var(--ink-soft);background:var(--paper);border-radius:10px;padding:1px 7px}
+.col-add{margin-left:auto;border:none;background:transparent;color:var(--ink-soft);font-size:18px;line-height:1;padding:0 4px}
+.col-add:hover{color:var(--accent)}
+.col-body{padding:10px;display:flex;flex-direction:column;gap:9px;overflow-y:auto;min-height:54px}
+.col-body.dragover{background:var(--accent-soft);border-radius:8px}
+
+/* card */
+.card{position:relative;background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--norm);border-radius:8px;padding:10px 11px;box-shadow:var(--shadow);cursor:grab}
+.card:hover{border-color:var(--line-strong);border-left-color:var(--norm)}
+.card.pri-high{border-left-color:var(--hi)} .card.pri-low{border-left-color:var(--lo)}
+.card.dirty::after{content:"";position:absolute;top:9px;right:9px;width:7px;height:7px;border-radius:50%;background:var(--accent)}
+.card.dragging{opacity:.45}
+.card-id{font-family:var(--mono);font-size:10.5px;color:var(--ink-soft);letter-spacing:.02em}
+.card-id.new{color:var(--accent)}
+.card-title{font-weight:600;font-size:13.5px;margin:3px 0 0;padding-right:12px}
+.card-meta{display:flex;gap:10px;flex-wrap:wrap;margin-top:7px;font-size:11.5px;color:var(--ink-soft)}
+.card-meta .who{font-weight:600;color:var(--ink)}
+.card-meta .due.late{color:var(--due-late);font-weight:600}
+.card-check{font-family:var(--mono);font-size:11px;color:var(--ink-soft)}
+
+/* modal */
+.scrim{position:fixed;inset:0;background:rgba(20,24,30,.34);display:none;align-items:center;justify-content:center;padding:20px;z-index:10}
+.scrim.open{display:flex}
+.modal{background:var(--surface);border-radius:12px;box-shadow:0 12px 40px rgba(20,24,30,.22);width:100%;max-width:560px;max-height:88vh;overflow:auto;padding:20px}
+.modal h2{margin:0 0 14px;font-size:16px}
+.modal .row{display:flex;gap:12px}.modal .row>div{flex:1}
+.field{margin-bottom:13px}
+.modal-foot{display:flex;gap:8px;justify-content:flex-end;margin-top:6px}
+.modal-foot .left{margin-right:auto}
+.muted{color:var(--ink-soft);font-size:12px}
+.hint{font-size:12px;color:var(--ink-soft);margin:8px 0 0}
+.err{color:var(--due-late);font-size:12.5px;margin-top:8px;white-space:pre-wrap}
+.envelope{font-family:var(--mono);font-size:11.5px;white-space:pre;overflow:auto;background:var(--paper);border:1px solid var(--line-strong);border-radius:8px;padding:12px;max-height:46vh}
+.toast{position:fixed;bottom:54px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:9px 16px;border-radius:8px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:20}
+.toast.show{opacity:1}
+
+/* footer */
+footer{padding:8px 18px;border-top:1px solid var(--line);background:var(--surface);font-size:12px;color:var(--ink-soft)}
+.ss-foot{background:none;border:none;color:var(--ink-soft);padding:0;font-size:12px}
+.ss-foot:hover{color:var(--accent)}
+.ss-foot .gear{color:var(--accent)}
+.checklist-line{display:flex;align-items:flex-start;gap:7px;margin:2px 0}
+.checklist-line input{width:auto;margin-top:3px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand"><span class="gear">*</span> Project Board</div>
+  <input id="boardTitle" value="Untitled board" aria-label="Board title">
+  <div class="spacer"></div>
+  <span class="stamp" id="stamp"></span>
+  <div class="actions">
+    <button id="loadBtn">Load board</button>
+    <button id="saveBtn" class="btn-primary">Save (copy write envelope)</button>
+  </div>
+</header>
+
+<main><div id="board"></div></main>
+
+<footer>
+  <button class="ss-foot" id="ssFoot"><span class="gear">*</span> Part of StickShift -></button>
+</footer>
+
+<!-- Load modal -->
+<div class="scrim" id="loadScrim">
+  <div class="modal">
+    <h2>Load board</h2>
+    <p class="muted">Paste the board bundle - the <span style="font-family:var(--mono)">### FILE:</span> blocks for <code>board.md</code> and the task shards. Leave empty to start a board from scratch.</p>
+    <textarea id="loadText" rows="14" placeholder="### FILE: projects/your-board/board.md&#10;---&#10;type: Board&#10;title: ...&#10;columns: [Backlog, In Progress, Done]&#10;---&#10;### END FILE"></textarea>
+    <div class="err" id="loadErr"></div>
+    <div class="modal-foot">
+      <button id="loadCancel">Cancel</button>
+      <button id="loadDo" class="btn-primary">Load board</button>
+    </div>
+  </div>
+</div>
+
+<!-- Card editor modal -->
+<div class="scrim" id="cardScrim">
+  <div class="modal">
+    <h2><span id="cardIdLabel" style="font-family:var(--mono);font-size:13px;color:var(--ink-soft)"></span></h2>
+    <div class="field"><label>Title</label><input id="fTitle"></div>
+    <div class="row">
+      <div class="field"><label>Status</label><select id="fStatus"></select></div>
+      <div class="field"><label>Priority</label>
+        <select id="fPriority"><option value="">-</option><option>high</option><option>normal</option><option>low</option></select></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>Assignee</label><input id="fAssignee"></div>
+      <div class="field"><label>Due (YYYY-MM-DD)</label><input id="fDue" placeholder="2026-07-02"></div>
+    </div>
+    <div class="field"><label>Description &amp; checklist</label><textarea id="fBody" rows="7"></textarea>
+      <p class="hint">Checklist lines use <span style="font-family:var(--mono)">- [ ]</span> / <span style="font-family:var(--mono)">- [x]</span>.</p></div>
+    <div class="modal-foot">
+      <button id="cardArchive" class="left">Archive</button>
+      <button id="cardCancel">Cancel</button>
+      <button id="cardSave" class="btn-primary">Apply</button>
+    </div>
+  </div>
+</div>
+
+<!-- Export modal -->
+<div class="scrim" id="expScrim">
+  <div class="modal">
+    <h2 id="expTitle">Write envelope</h2>
+    <p class="muted" id="expSub"></p>
+    <div class="envelope" id="expBox"></div>
+    <div class="modal-foot">
+      <button id="expClose">Close</button>
+      <button id="expCopy" class="btn-primary">Copy to clipboard</button>
+    </div>
+  </div>
+</div>
+
+<!-- StickShift onboarding modal -->
+<div class="scrim" id="ssScrim">
+  <div class="modal">
+    <h2><span style="color:var(--accent)">*</span> Welcome to StickShift</h2>
+    <p>This is a StickShift tool. It works on its own right now - load a board, arrange cards, and copy the write envelope. StickShift just gives it a memory: it stores your boards as files and opens this tool for you.</p>
+    <p style="font-weight:600;margin-bottom:6px">Are you using StickShift?</p>
+    <div class="modal-foot" style="justify-content:flex-start" id="ssBranch">
+      <button id="ssYes">Yes - set it up</button>
+      <button id="ssNo">No / what is it?</button>
+    </div>
+    <div id="ssYesPanel" style="display:none;margin-top:12px">
+      <p class="muted">In StickShift, click <strong>Install HTML Tool</strong> and pick this file - that copies the tool and installs its skill in one step. Or copy the skill below and paste it into <strong>Apply Write Envelope</strong>.</p>
+      <button id="ssCopySkill">Copy skill</button>
+    </div>
+    <div id="ssNoPanel" style="display:none;margin-top:12px">
+      <p class="muted">StickShift is an Excel cockpit that gives a chat assistant a file-based memory and lets it open local tools like this one. You can use this board standalone now; come back to connect it when you're ready.</p>
+    </div>
+    <div class="modal-foot"><button id="ssClose">Close</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+window.STICKSHIFT_TOOL = {
+  id: "project-board",
+  file: "project-board.html",
+  skillSlug: "project-board",
+  title: "Project Board",
+  version: "0.1",
+  skill: "project-board.skill.md",
+  io: "client-only"
+};
+
+// ---- state ----
+var board = { title:"Untitled board", columns:["Backlog","In Progress","Done"], path:"", configPath:"", tasksDir:"" };
+var boardSnapshot = null;            // {title, columns} at load, for board.md dirty check
+var cards = [];                      // [{path, fields:{}, body, order, snapshot, isNew}]
+var newCounter = 0;
+var editing = null;
+var KNOWN_ORDER = ["type","id","title","status","assignee","due","priority","okf_version"];
+
+// ---- frontmatter parse / serialize (minimal, stable) ----
+function parseFrontmatter(text){
+  // returns {fields: orderedKeyArray + map, body}
+  var lines = text.replace(/\r\n/g,"\n").split("\n");
+  var keys=[], map={}, body=text, i=0;
+  if(lines[0] && lines[0].trim()==="---"){
+    i=1;
+    while(i<lines.length && lines[i].trim()!=="---"){
+      var line=lines[i]; var idx=line.indexOf(":");
+      if(idx>0){
+        var k=line.slice(0,idx).trim();
+        var v=line.slice(idx+1).trim();
+        keys.push(k); map[k]=v;
+      }
+      i++;
+    }
+    body = lines.slice(i+1).join("\n").replace(/^\n+/,"").replace(/\s+$/,"");
+  }
+  return {keys:keys, map:map, body:body};
+}
+function parseList(v){ // "[a, b, c]" -> ["a","b","c"]
+  if(!v) return [];
+  v=v.trim();
+  if(v[0]==="[") v=v.slice(1,v.lastIndexOf("]"));
+  return v.split(",").map(function(s){return s.trim();}).filter(Boolean);
+}
+function serializeList(arr){ return "["+arr.join(", ")+"]"; }
+
+function cardNormalKey(c){ // stable representation for dirty comparison
+  return JSON.stringify({f:c.fields, b:c.body});
+}
+function serializeCard(c){
+  var f=c.fields, out="---\n", seen={};
+  KNOWN_ORDER.forEach(function(k){ if(f[k]!==undefined && f[k]!==""){ out+=k+": "+f[k]+"\n"; seen[k]=1; }});
+  Object.keys(f).forEach(function(k){ if(!seen[k] && f[k]!==undefined && f[k]!==""){ out+=k+": "+f[k]+"\n"; }});
+  out+="---\n";
+  if(c.body && c.body.trim()) out+="\n"+c.body.replace(/\s+$/,"")+"\n";
+  return out;
+}
+function serializeBoard(){
+  var out="---\ntype: Board\n";
+  out+="title: "+board.title+"\n";
+  out+="columns: "+serializeList(board.columns)+"\n";
+  out+="okf_version: \"0.1\"\n---\n";
+  return out;
+}
+
+// ---- load ----
+function loadFromText(text){
+  var blocks=[]; var re=/### FILE:\s*(.+?)\s*\n([\s\S]*?)(?:\n### END FILE|$)/g, m;
+  while((m=re.exec(text))!==null){ blocks.push({path:m[1].trim(), text:m[2]}); }
+  if(!blocks.length && text.trim()){
+    // tolerate a single bare concept with no FILE wrapper
+    blocks.push({path:"", text:text});
+  }
+  var boardBlock=null, taskBlocks=[];
+  blocks.forEach(function(b){
+    var fm=parseFrontmatter(b.text);
+    var type=(fm.map.type||"").toLowerCase();
+    if(type==="board"){ boardBlock={block:b, fm:fm}; }
+    else if(type==="task"){ taskBlocks.push({block:b, fm:fm}); }
+  });
+
+  if(boardBlock){
+    board.title=boardBlock.fm.map.title||"Untitled board";
+    board.columns=parseList(boardBlock.fm.map.columns);
+    board.configPath=boardBlock.block.path;
+    board.tasksDir=board.configPath.replace(/board\.md$/,"tasks/");
+  }
+  if(!board.columns.length) board.columns=["Backlog","In Progress","Done"];
+
+  // dedupe ids
+  var seenIds={}, dupes=[];
+  cards=[]; var order=0;
+  taskBlocks.forEach(function(tb){
+    var f={}; tb.fm.keys.forEach(function(k){ f[k]=tb.fm.map[k]; });
+    f.type="Task";
+    var id=f.id||"";
+    if(seenIds[id]){ dupes.push(id); return; }
+    seenIds[id]=1;
+    var c={ path:tb.block.path, fields:f, body:tb.fm.body, order:order++, isNew:false };
+    c.snapshot=cardNormalKey(c);
+    cards.push(c);
+  });
+
+  boardSnapshot=JSON.stringify({title:board.title, columns:board.columns});
+  newCounter=0;
+  stampNow();
+  document.getElementById("boardTitle").value=board.title;
+  render();
+  return dupes;
+}
+
+// ---- render ----
+function isLate(due){
+  if(!due) return false;
+  var t=new Date(); t.setHours(0,0,0,0);
+  var d=new Date(due+"T00:00:00");
+  return d<t;
+}
+function checklistSummary(body){
+  var done=(body.match(/^- \[x\]/gmi)||[]).length;
+  var open=(body.match(/^- \[ \]/gm)||[]).length;
+  if(done+open===0) return "";
+  return "[x] "+done+"/"+(done+open);
+}
+function render(){
+  var boardEl=document.getElementById("board");
+  boardEl.innerHTML="";
+  var laneNames=board.columns.slice();
+  // collect statuses not in columns and not archived -> Unsorted lane
+  var hasUnsorted=cards.some(function(c){
+    var s=c.fields.status||"";
+    return s!=="archived" && laneNames.indexOf(s)<0;
+  });
+  var lanes=laneNames.slice(); if(hasUnsorted) lanes.push("Unsorted");
+
+  lanes.forEach(function(name){
+    var col=document.createElement("div"); col.className="col";
+    var inLane=cards.filter(function(c){
+      var s=c.fields.status||"";
+      if(s==="archived") return false;
+      if(name==="Unsorted") return laneNames.indexOf(s)<0;
+      return s===name;
+    }).sort(function(a,b){return a.order-b.order;});
+
+    var head=document.createElement("div"); head.className="col-head";
+    head.innerHTML='<span class="col-name">'+esc(name)+'</span><span class="col-count">'+inLane.length+'</span>';
+    if(name!=="Unsorted"){
+      var add=document.createElement("button"); add.className="col-add"; add.textContent="+"; add.title="Add card";
+      add.onclick=function(){ addCard(name); };
+      head.appendChild(add);
+    }
+    col.appendChild(head);
+
+    var bodyEl=document.createElement("div"); bodyEl.className="col-body";
+    bodyEl.dataset.lane=name;
+    bodyEl.addEventListener("dragover",function(e){e.preventDefault();bodyEl.classList.add("dragover");});
+    bodyEl.addEventListener("dragleave",function(){bodyEl.classList.remove("dragover");});
+    bodyEl.addEventListener("drop",function(e){
+      e.preventDefault(); bodyEl.classList.remove("dragover");
+      var id=e.dataTransfer.getData("text/plain");
+      var c=cards.filter(function(x){return x.fields.id===id;})[0];
+      if(c && name!=="Unsorted"){ c.fields.status=name; render(); }
+    });
+    inLane.forEach(function(c){ bodyEl.appendChild(renderCard(c)); });
+    col.appendChild(bodyEl);
+    boardEl.appendChild(col);
+  });
+}
+function renderCard(c){
+  var el=document.createElement("div");
+  var pri=c.fields.priority||"";
+  el.className="card"+(pri==="high"?" pri-high":pri==="low"?" pri-low":"")+(isDirty(c)?" dirty":"");
+  el.draggable=true;
+  el.tabIndex=0;
+  el.addEventListener("dragstart",function(e){ e.dataTransfer.setData("text/plain",c.fields.id); el.classList.add("dragging"); });
+  el.addEventListener("dragend",function(){ el.classList.remove("dragging"); });
+  el.addEventListener("click",function(){ openCard(c); });
+  el.addEventListener("keydown",function(e){ if(e.key==="Enter") openCard(c); });
+
+  var idClass="card-id"+(c.isNew?" new":"");
+  var meta="";
+  if(c.fields.assignee) meta+='<span class="who">'+esc(c.fields.assignee)+'</span>';
+  if(c.fields.due) meta+='<span class="due'+(isLate(c.fields.due)?" late":"")+'">'+esc(c.fields.due)+'</span>';
+  var cl=checklistSummary(c.body); if(cl) meta+='<span class="card-check">'+cl+'</span>';
+
+  el.innerHTML='<div class="'+idClass+'">'+esc(c.fields.id||"(no id)")+'</div>'+
+    '<div class="card-title">'+esc(c.fields.title||"Untitled")+'</div>'+
+    (meta?'<div class="card-meta">'+meta+'</div>':'');
+  return el;
+}
+function isDirty(c){ return c.isNew || c.snapshot!==cardNormalKey(c); }
+function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+// ---- add / edit ----
+function addCard(status){
+  newCounter++;
+  var c={ path:"", isNew:true, order:1e9+newCounter,
+    fields:{ type:"Task", id:"T-NEW-"+newCounter, title:"New task", status:status, "okf_version":"\"0.1\"" }, body:"" };
+  c.snapshot="__new__";
+  cards.push(c);
+  render(); openCard(c);
+}
+function openCard(c){
+  editing=c;
+  document.getElementById("cardIdLabel").textContent=c.fields.id||"(no id)";
+  document.getElementById("fTitle").value=c.fields.title||"";
+  document.getElementById("fAssignee").value=c.fields.assignee||"";
+  document.getElementById("fDue").value=c.fields.due||"";
+  document.getElementById("fPriority").value=c.fields.priority||"";
+  var sel=document.getElementById("fStatus"); sel.innerHTML="";
+  var opts=board.columns.slice(); if(opts.indexOf(c.fields.status)<0 && c.fields.status) opts.push(c.fields.status);
+  opts.forEach(function(o){ var op=document.createElement("option"); op.value=o; op.textContent=o; sel.appendChild(op); });
+  sel.value=c.fields.status||board.columns[0];
+  document.getElementById("fBody").value=c.body||"";
+  openScrim("cardScrim");
+}
+function applyCard(){
+  if(!editing) return;
+  var f=editing.fields;
+  f.title=document.getElementById("fTitle").value.trim();
+  f.assignee=document.getElementById("fAssignee").value.trim();
+  f.due=document.getElementById("fDue").value.trim();
+  f.priority=document.getElementById("fPriority").value;
+  f.status=document.getElementById("fStatus").value;
+  editing.body=document.getElementById("fBody").value.replace(/\r\n/g,"\n");
+  closeScrim("cardScrim"); render();
+}
+function archiveCard(){
+  if(!editing) return;
+  editing.fields.status="archived";
+  closeScrim("cardScrim"); render();
+  toast("Card archived");
+}
+
+// ---- export ----
+function nextRealIds(count){
+  var max=0;
+  cards.forEach(function(c){
+    var m=/^T-(\d+)$/.exec(c.fields.id||"");
+    if(m){ var n=parseInt(m[1],10); if(n>max) max=n; }
+  });
+  var ids=[]; for(var i=1;i<=count;i++){ ids.push("T-"+String(max+i).padStart(4,"0")); }
+  return ids;
+}
+function buildEnvelope(){
+  // resolve placeholders first (mutates so a second save is stable)
+  var placeholders=cards.filter(function(c){ return /^T-NEW-/.test(c.fields.id||""); });
+  var fresh=nextRealIds(placeholders.length);
+  placeholders.forEach(function(c,i){ c.fields.id=fresh[i]; });
+
+  var blocks=[];
+  // board.md if changed
+  if(boardSnapshot!==JSON.stringify({title:board.title, columns:board.columns})){
+    blocks.push({ path: board.configPath || "projects/board/board.md", text: serializeBoard() });
+  }
+  // dirty / new task shards
+  var changed=cards.filter(isDirty);
+  changed.forEach(function(c){
+    var path=c.path;
+    if(!path){
+      var dir=board.tasksDir || (board.configPath?board.configPath.replace(/board\.md$/,"tasks/"):"projects/board/tasks/");
+      path=dir+c.fields.id+".md"; c.path=path;
+    }
+    blocks.push({ path:path, text:serializeCard(c) });
+  });
+
+  return { blocks:changed, board:boardSnapshot!==JSON.stringify({title:board.title, columns:board.columns}),
+           env: blocks.length ? "<VBA_WRITE>\n"+blocks.map(function(b){return "### FILE: "+b.path+"\n"+b.text+"### END FILE";}).join("\n")+"\n</VBA_WRITE>" : "" ,
+           count: blocks.length, savedCards: changed };
+}
+function doSave(){
+  var r=buildEnvelope();
+  var box=document.getElementById("expBox");
+  if(r.count===0){
+    document.getElementById("expTitle").textContent="Nothing to save";
+    document.getElementById("expSub").textContent="No card or board field has changed since load. The envelope is empty.";
+    box.textContent="(empty)";
+    document.getElementById("expCopy").style.display="none";
+  }else{
+    var parts=[]; if(r.board) parts.push("board.md");
+    var n=r.savedCards.length; if(n) parts.push(n+" task"+(n===1?"":"s"));
+    document.getElementById("expTitle").textContent="Write envelope - "+parts.join(" + ");
+    document.getElementById("expSub").textContent="Paste this into StickShift's Apply Write Envelope. Indexes regenerate automatically.";
+    box.textContent=r.env;
+    document.getElementById("expCopy").style.display="";
+  }
+  document.getElementById("expCopy").dataset.env=r.env;
+  // re-snapshot happens only after a successful copy
+  document.getElementById("expCopy").onclick=function(){
+    copyText(r.env, function(ok){
+      if(ok){
+        r.savedCards.forEach(function(c){ c.isNew=false; c.snapshot=cardNormalKey(c); });
+        boardSnapshot=JSON.stringify({title:board.title, columns:board.columns});
+        toast("Envelope copied - paste into Apply Write Envelope");
+        closeScrim("expScrim"); render();
+      }else{
+        toast("Copy failed - select the text and Ctrl+C");
+      }
+    });
+  };
+  openScrim("expScrim");
+}
+
+// ---- clipboard with file:// fallback ----
+function copyText(text, cb){
+  if(window.isSecureContext && navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(function(){cb(true);}, function(){ cb(legacyCopy(text)); });
+  }else{ cb(legacyCopy(text)); }
+}
+function legacyCopy(text){
+  var ta=document.createElement("textarea"); ta.value=text;
+  ta.style.position="fixed"; ta.style.opacity="0"; document.body.appendChild(ta);
+  ta.select(); var ok=false; try{ ok=document.execCommand("copy"); }catch(e){}
+  document.body.removeChild(ta); return ok;
+}
+
+// ---- misc ui ----
+function stampNow(){
+  var d=new Date(); var hh=String(d.getHours()).padStart(2,"0"), mm=String(d.getMinutes()).padStart(2,"0");
+  document.getElementById("stamp").textContent="Loaded "+hh+":"+mm+" - reload if changed since";
+}
+function openScrim(id){ document.getElementById(id).classList.add("open"); }
+function closeScrim(id){ document.getElementById(id).classList.remove("open"); }
+var toastT;
+function toast(msg){ var t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toastT); toastT=setTimeout(function(){t.classList.remove("show");},2600); }
+
+// ---- wire up ----
+document.getElementById("boardTitle").addEventListener("input",function(e){ board.title=e.target.value; });
+document.getElementById("loadBtn").onclick=function(){ document.getElementById("loadErr").textContent=""; openScrim("loadScrim"); };
+document.getElementById("loadCancel").onclick=function(){ closeScrim("loadScrim"); };
+document.getElementById("loadDo").onclick=function(){
+  var txt=document.getElementById("loadText").value;
+  try{
+    var dupes=loadFromText(txt);
+    closeScrim("loadScrim");
+    if(dupes.length) toast("Skipped duplicate id(s): "+dupes.join(", "));
+    else toast("Board loaded");
+  }catch(err){ document.getElementById("loadErr").textContent="Could not parse the bundle: "+err.message; }
+};
+document.getElementById("saveBtn").onclick=doSave;
+document.getElementById("cardCancel").onclick=function(){
+  if(editing && editing.isNew && editing.snapshot==="__new__"){ // discard untouched new card
+    cards=cards.filter(function(c){return c!==editing;}); render();
+  }
+  closeScrim("cardScrim");
+};
+document.getElementById("cardSave").onclick=applyCard;
+document.getElementById("cardArchive").onclick=archiveCard;
+document.getElementById("expClose").onclick=function(){ closeScrim("expScrim"); };
+document.getElementById("ssFoot").onclick=function(){
+  document.getElementById("ssYesPanel").style.display="none";
+  document.getElementById("ssNoPanel").style.display="none";
+  openScrim("ssScrim");
+};
+document.getElementById("ssYes").onclick=function(){ document.getElementById("ssYesPanel").style.display=""; document.getElementById("ssNoPanel").style.display="none"; };
+document.getElementById("ssNo").onclick=function(){ document.getElementById("ssNoPanel").style.display=""; document.getElementById("ssYesPanel").style.display="none"; };
+document.getElementById("ssClose").onclick=function(){ closeScrim("ssScrim"); };
+document.getElementById("ssCopySkill").onclick=function(){
+  var sk=document.getElementById("stickshift-skill").textContent.replace(/^\s+/,"");
+  copyText(sk,function(ok){ toast(ok?"Skill copied":"Copy failed - select and Ctrl+C"); });
+};
+// click scrim background to close
+document.querySelectorAll(".scrim").forEach(function(s){ s.addEventListener("mousedown",function(e){ if(e.target===s) s.classList.remove("open"); }); });
+
+// initial empty board
+render(); stampNow();
+</script>
+</body>
+</html>
