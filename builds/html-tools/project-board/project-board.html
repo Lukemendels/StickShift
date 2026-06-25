@@ -153,6 +153,10 @@ footer{padding:8px 18px;border-top:1px solid var(--line);background:var(--surfac
   <div class="modal">
     <h2>Load board</h2>
     <p class="muted">Paste the board bundle - the <span style="font-family:var(--mono)">### FILE:</span> blocks for <code>board.md</code> and the task shards. Leave empty to start a board from scratch.</p>
+    <div id="dropZone" style="border: 2px dashed var(--line-strong); border-radius: 8px; padding: 18px; text-align: center; margin-bottom: 12px; cursor: pointer; background: var(--paper); transition: border-color 0.2s, background-color 0.2s;">
+      <span style="color: var(--ink-soft); font-size: 13px;">Drag &amp; drop <code>.md</code> bundle file here, or <strong>click to browse</strong></span>
+    </div>
+    <input type="file" id="fileInput" accept=".md,.txt" style="display: none;">
     <textarea id="loadText" rows="14" placeholder="### FILE: projects/your-board/board.md&#10;---&#10;type: Board&#10;title: ...&#10;columns: [Backlog, In Progress, Done]&#10;---&#10;### END FILE"></textarea>
     <div class="err" id="loadErr"></div>
     <div class="modal-foot">
@@ -634,6 +638,75 @@ document.getElementById("ssCopySkill").onclick=function(){
   var sk=document.getElementById("stickshift-skill").textContent.replace(/^\s+/,"");
   copyText(sk,function(ok){ toast(ok?"Skill copied":"Copy failed - select and Ctrl+C"); });
 };
+// ---- drag & drop loader file handling ----
+var dropZone = document.getElementById("dropZone");
+var fileInput = document.getElementById("fileInput");
+
+dropZone.onclick = function() { fileInput.click(); };
+fileInput.onchange = function(e) {
+  var file = e.target.files[0];
+  if (file) handleLoadedFile(file);
+};
+
+dropZone.addEventListener("dragover", function(e) {
+  e.preventDefault();
+  dropZone.style.borderColor = "var(--accent)";
+  dropZone.style.backgroundColor = "var(--accent-soft)";
+});
+dropZone.addEventListener("dragleave", function() {
+  dropZone.style.borderColor = "var(--line-strong)";
+  dropZone.style.backgroundColor = "var(--paper)";
+});
+dropZone.addEventListener("drop", function(e) {
+  e.preventDefault();
+  dropZone.style.borderColor = "var(--line-strong)";
+  dropZone.style.backgroundColor = "var(--paper)";
+  var file = e.dataTransfer.files[0];
+  if (file) handleLoadedFile(file);
+});
+
+function handleLoadedFile(file) {
+  var reader = new FileReader();
+  reader.onload = function(evt) {
+    var txt = evt.target.result;
+    document.getElementById("loadText").value = txt;
+    try {
+      var dupes = loadFromText(txt);
+      closeScrim("loadScrim");
+      if (dupes.length) toast("Skipped duplicate id(s): " + dupes.join(", "));
+      else toast("Board loaded successfully");
+    } catch(err) {
+      document.getElementById("loadErr").textContent = "Could not parse the bundle: " + err.message;
+    }
+  };
+  reader.readAsText(file);
+}
+
+// Global window drop listener for drag & dropping anywhere on the page
+window.addEventListener("dragover", function(e) {
+  e.preventDefault();
+});
+window.addEventListener("drop", function(e) {
+  if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+    e.preventDefault();
+    var file = e.dataTransfer.files[0];
+    if (file) {
+      var reader = new FileReader();
+      reader.onload = function(evt) {
+        var txt = evt.target.result;
+        try {
+          var dupes = loadFromText(txt);
+          if (dupes.length) toast("Skipped duplicate id(s): " + dupes.join(", "));
+          else toast("Board loaded successfully");
+        } catch(err) {
+          toast("Error loading board: " + err.message);
+        }
+      };
+      reader.readAsText(file);
+    }
+  }
+});
+
 // click scrim background to close
 document.querySelectorAll(".scrim").forEach(function(s){ s.addEventListener("mousedown",function(e){ if(e.target===s) s.classList.remove("open"); }); });
 
