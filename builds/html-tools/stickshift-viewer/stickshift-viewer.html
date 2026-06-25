@@ -573,6 +573,7 @@
   <div class="spacer"></div>
   <span class="stamp" id="stamp">No bundle loaded</span>
   <div class="actions">
+    <button id="loadAllBtn">Load all</button>
     <button id="loadBtn" class="btn-primary">Load Bundle</button>
     <button id="saveBtn" class="btn-success disabled">Save Changes (VBA Envelope)</button>
   </div>
@@ -1224,6 +1225,17 @@ Saving changes: The tool tracks changes made to any files and exports a standard
       }
       target = target.parentNode;
     }
+  };
+
+  document.getElementById("loadAllBtn").onclick = function() {
+    var req = "<CONTEXT_REQUEST>\nmode: all\n</CONTEXT_REQUEST>";
+    copyText(req, function(ok) {
+      if (ok) {
+        toast("Copied 'Load All' request! Run 'Build Context' in StickShift.");
+      } else {
+        toast("Copy failed - copy manually from the Console or textarea.");
+      }
+    });
   };
 
   document.getElementById("loadBtn").onclick = function() {

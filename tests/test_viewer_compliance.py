@@ -88,6 +88,7 @@ def test_viewer_compliance_onboarding_elements() -> None:
     assert 'id="ssNo"' in html_text, "Missing onboarding No button"
     assert 'id="ssCopySkill"' in html_text, "Missing onboarding Copy Skill button"
     assert 'id="ssFootBtn"' in html_text, "Missing footer button to toggle onboarding panel"
+    assert 'id="loadAllBtn"' in html_text, "Missing Load all button"
 
 
 def build_tree_python(files_list: list[dict]) -> dict:
