@@ -1201,6 +1201,7 @@ Instruction line: "Copy the block above and click Open HTML Tool in StickShift."
   }
 
   function loadFromText(text) {
+    var hasMarkers = text.indexOf("### FILE:") !== -1 || text.indexOf("<!-- OKF-CONTEXT-BUNDLE") !== -1 || text.indexOf("<!-- OKF:BEGIN") !== -1;
     var lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
     var parsed = [];
     var currentPath = "";
@@ -1212,7 +1213,8 @@ Instruction line: "Copy the block above and click Open HTML Tool in StickShift."
         if (content) {
           var fm = parseFrontmatter(content);
           var type = (fm.map.type || "").toLowerCase();
-          if (type === "contact" || currentPath.indexOf("network/contacts/") === 0) {
+          var cleanPath = currentPath.startsWith("/") ? currentPath.substring(1) : currentPath;
+          if (type === "contact" || cleanPath.indexOf("network/contacts/") === 0) {
             var sections = parseBodySections(fm.body);
             parsed.push({
               path: currentPath,
@@ -1261,7 +1263,7 @@ Instruction line: "Copy the block above and click Open HTML Tool in StickShift."
     flushBlock();
 
     // Support single file load fallback
-    if (!parsed.length && text.trim()) {
+    if (!parsed.length && text.trim() && !hasMarkers) {
       var singleFm = parseFrontmatter(text);
       var singleType = (singleFm.map.type || "").toLowerCase();
       if (singleType === "contact") {
@@ -1276,7 +1278,7 @@ Instruction line: "Copy the block above and click Open HTML Tool in StickShift."
       }
     }
 
-    if (parsed.length > 0) {
+    if (parsed.length > 0 || hasMarkers) {
       contacts = parsed;
       activeContact = null;
       activeMode = "view";
