@@ -1,0 +1,358 @@
+<!-- OKF-CONTEXT-BUNDLE
+mode: bundle
+okf_version: 0.1
+assembled: 2026-06-25T07:28:17Z
+concepts: 1 (0 foundation, 0 map, 1 selected)
+approx_tokens: 2475
+-->
+
+<!-- OKF:BEGIN concept=projects/air-cargo-ai/board.md layer=selected -->
+---
+okf_version: "0.1"
+type: Board
+title: Air Cargo AI Enablement Board
+description: Kanban-style project board for the Air Cargo AI enablement workstream, capturing active efforts and backlog items as tasks.
+columns:
+  - Active
+  - Waiting
+  - Backlog
+  - Done
+workstream: /workstreams/air-cargo-ai/air-cargo-ai.md
+---
+
+# Air Cargo AI Enablement Board
+
+This board mirrors the Air Cargo AI workstream state in a kanban format. Columns:
+
+- **Active**: Current heavy and light efforts.
+- **Waiting**: Work blocked on data, decisions, or reviews.
+- **Backlog**: Not-started items and future ideas.
+- **Done**: Completed tasks (none yet).
+
+Tasks live under `/projects/air-cargo-ai/tasks/` as one shard per task.
+
+### FILE: projects/air-cargo-ai/tasks/T-0001.md
+---
+okf_version: "0.1"
+type: Task
+id: T-0001
+title: Internal ACD Tracker (Heavy)
+status: Active
+priority: normal
+bucket: Policy Tracker
+---
+
+**Intent**
+
+The Internal ACD policy tracker is the source of truth that automations in and out of the PMT tracker depend on. It is the foundation upon which subsequent systems (dashboards, reporting tools, wish list narratives, executive dashboards) will be built.
+
+**Role in the broader system**
+
+- Capture and maintain accurate, timely status for ACD policies.
+- Integrate with PMT tracking so the Internal ACD tracker is authoritative.
+- Serve as the base layer for dashboards, wish list narratives, and executive reporting.
+
+### FILE: projects/air-cargo-ai/tasks/T-0002.md
+---
+okf_version: "0.1"
+type: Task
+id: T-0002
+title: PSS Entity Compliance Report (Light)
+status: Active
+priority: normal
+bucket: Individual Workflow Improvement
+---
+
+**Intent**
+
+Take PARIS data for an entity’s compliance record and quickly generate a report that informs the PSS with helpful understanding of compliance heuristics and statistics.
+
+**High-level flow (current vision)**
+
+- Export entity compliance data from PARIS.
+- Create an Excel table from the PARIS export.
+- Use Python in Excel to:
+  - Reference the table.
+  - Generate summary statistics and heuristics.
+  - Export results as JSON within the spreadsheet context.
+- Insert summary statistics and JSON into DHSChat for narrative synthesis and structured report drafting.
+- Return the drafted report to Excel via VBA:
+  - Populate a formatted report template.
+  - Enable human review and finalization.
+
+### FILE: projects/air-cargo-ai/tasks/T-0003.md
+---
+okf_version: "0.1"
+type: Task
+id: T-0003
+title: Fact Sheets Automation
+status: Backlog
+priority: normal
+bucket: Projects
+---
+
+**Intent**
+
+Automate the creation of Fact Sheets using a combination of DHSChat assistants and a VBA formatting tool.
+
+**Original description**
+
+- Create a DHSChat Assistant Interviewer with two modes:
+  - Interview mode to conversationally pull together details needed for a fact sheet, with support for uploaded context documents.
+  - Output mode that distills and summarizes context into a lightly formatted Fact Sheet report.
+- User copies the Fact Sheet output into Word, edits/approves, and sends for processing.
+- A DHSChat Assistant Formatter encodes formatting needed for the VBA tool.
+- The VBA tool formats into a Fact Sheet Word template, converts to PowerPoint, and saves in a designated OneDrive folder.
+
+**Checklist**
+
+- Create DHSChat Assistant Formatter.
+- Host and record training.
+- Create DHSChat Assistant Interviewer.
+- Create VBA Formatter Tool.
+
+### FILE: projects/air-cargo-ai/tasks/T-0004.md
+---
+okf_version: "0.1"
+type: Task
+id: T-0004
+title: Comment Adjudication Tool
+status: Backlog
+priority: normal
+bucket: Projects
+---
+
+**Intent**
+
+Create a standard process pipeline that ETLs comments into a standard format, supports analysis in Excel (with Python), and uses DHSChat to map-reduce narrative content into structured outputs and summaries.
+
+**Original description**
+
+- ETL comments into a standard format that an Excel macro sheet (leveraging Python) ingests.
+- Output file chunks to run through DHSChat via map reduce.
+- Consolidate report pieces into a report summarizing comment issues and listing key comments full text as examples.
+- Distill comments into core arguments, identify stakeholders who must weigh in, and task them to respond.
+- Draft comment responses based on stakeholder feedback.
+- Create an executive briefing mode that produces statistics on:
+  - Number of comments per change.
+  - Overall comment sentiment.
+  - Unique core arguments, etc.
+
+**Checklist**
+
+- Create an executive briefing mode.
+- Create the Answer Key “Unfolding” draft responder.
+- Build out tooling.
+- ETL training.
+- Train the process.
+
+### FILE: projects/air-cargo-ai/tasks/T-0005.md
+---
+okf_version: "0.1"
+type: Task
+id: T-0005
+title: MS Planner Layer for Policy Tracker
+status: Backlog
+priority: normal
+bucket: Policy Tracker
+---
+
+**Intent**
+
+Design the MS Planner layer as the active UI for people doing and managing tasks, and tie it into the Internal ACD tracker.
+
+**Original description**
+
+- The MS Planner layer is for people doing the task and people managing the task.
+- It is the active layer where people update and track progress and see assigned tasks.
+
+**Checklist**
+
+- Create Power Automate flows to tie into the ACD Tracker.
+- Host a training.
+- Build out the Planner(s).
+
+### FILE: projects/air-cargo-ai/tasks/T-0006.md
+---
+okf_version: "0.1"
+type: Task
+id: T-0006
+title: Wish List (Progress Narratives)
+status: Backlog
+priority: normal
+bucket: Policy Tracker
+---
+
+**Intent**
+
+Automate and format contributors’ notes on projects into a progress narrative report, usable internally or externally to convey project status color.
+
+**Original description**
+
+- The Wish List automates and formats contributors’ notes on projects.
+- Creates a report using DHSChat that can be used internally or externally to inform project status narratives.
+
+**Checklist**
+
+- Examine current process.
+- Connect Power Automate flows.
+- Create DHSChat Assistant automations.
+
+### FILE: projects/air-cargo-ai/tasks/T-0007.md
+---
+okf_version: "0.1"
+type: Task
+id: T-0007
+title: Executive Dashboard
+status: Backlog
+priority: normal
+bucket: Policy Tracker
+---
+
+**Intent**
+
+Build an executive dashboard as the one-stop shop for understanding ACD’s current state, progress, and reporting.
+
+**Original description**
+
+- Executive Dashboard becomes the one stop shop for:
+  - Understanding at a glance where ACD is currently.
+  - Briefing up on progress.
+  - Running reports.
+
+**Checklist**
+
+- Determine whether PowerApps or Power BI works better.
+- Leverage format from PowerPoint and build the system.
+- Consider PowerPoint export patterns.
+
+### FILE: projects/air-cargo-ai/tasks/T-0008.md
+---
+okf_version: "0.1"
+type: Task
+id: T-0008
+title: Travel Requests Workflow
+status: Backlog
+priority: normal
+bucket: File Management System + Quality of Life
+---
+
+**Intent**
+
+Improve handling of travel request information and related files, likely by standardizing intake, storage, and status tracking.
+
+(Details to be further developed as the task becomes active.)
+
+### FILE: projects/air-cargo-ai/tasks/T-0009.md
+---
+okf_version: "0.1"
+type: Task
+id: T-0009
+title: Onboarding Guide
+status: Backlog
+priority: normal
+bucket: File Management System + Quality of Life
+---
+
+**Intent**
+
+Create clearer, centralized onboarding materials and file structures for Air Cargo Policy staff.
+
+(Details to be refined when pulled into Active.)
+
+### FILE: projects/air-cargo-ai/tasks/T-0010.md
+---
+okf_version: "0.1"
+type: Task
+id: T-0010
+title: Weekly Report Standardization
+status: Backlog
+priority: normal
+bucket: File Management System + Quality of Life
+---
+
+**Intent**
+
+Standardize and streamline weekly reporting, likely tied to centralized repositories and dashboards.
+
+(Details to be developed during implementation.)
+
+### FILE: projects/air-cargo-ai/tasks/T-0011.md
+---
+okf_version: "0.1"
+type: Task
+id: T-0011
+title: Centralized Repository for Files and Links
+status: Backlog
+priority: normal
+bucket: File Management System + Quality of Life
+---
+
+**Intent**
+
+Move from sending files via email to a centralized Teams/SharePoint-based repository for files and links, including a mobile-friendly interface.
+
+**Original description**
+
+- Teams Site:
+  - Tom Keene has started initial work.
+  - Goal is to move from sending files in emails to having files live in a known location.
+  - Reduce the need to dig for links; staff know where to go to get them.
+- Provide a “quick 101” for a working group, especially for new staff.
+- Consider adding a PowerApp tab in the Teams site for mobile-friendly access, given travel priorities.
+- Weekly reporting tool will also live here.
+
+### FILE: projects/air-cargo-ai/tasks/T-0012.md
+---
+okf_version: "0.1"
+type: Task
+id: T-0012
+title: Standardized PSS Portfolio
+status: Backlog
+priority: normal
+bucket: File Management System + Quality of Life
+---
+
+**Intent**
+
+Standardize how PSS portfolios are represented and accessed across systems, improving consistency and discoverability.
+
+(Details to be developed.)
+
+### FILE: projects/air-cargo-ai/tasks/T-0013.md
+---
+okf_version: "0.1"
+type: Task
+id: T-0013
+title: Shared Status Calendar
+status: Backlog
+priority: normal
+bucket: File Management System + Quality of Life
+---
+
+**Intent**
+
+Create a shared status calendar so the team can see who is where and when.
+
+**Original description**
+
+- “Shared status calendar to know who is where when.”
+
+### FILE: projects/air-cargo-ai/tasks/T-0014.md
+---
+okf_version: "0.1"
+type: Task
+id: T-0014
+title: Training Materials
+status: Backlog
+priority: normal
+bucket: File Management System + Quality of Life
+---
+
+**Intent**
+
+Centralize and standardize training content, potentially including AI/tooling usage and new processes introduced in the Air Cargo AI enablement workstream.
+
+(Details to be developed as the task is activated.)
+<!-- OKF:END concept=projects/air-cargo-ai/board.md -->
+
