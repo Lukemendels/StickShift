@@ -28,7 +28,8 @@ status (must be one of board.columns), and optional assignee, due (ISO), priorit
 (high|normal|low). Body is markdown with an optional "- [ ]" checklist. Preserve
 any field you do not recognize.
 
-Recall: emit one <CONTEXT_REQUEST> for the board folder, nothing else.
+Recall: emit one <CONTEXT_REQUEST> including projects/<slug>/board.md at depth: 1, 
+so the board and its linked task shards come back together.
 Show: emit one <HTML_OPEN> for project-board.html, nothing else.
 
 Update - two paths:
