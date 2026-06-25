@@ -291,46 +291,95 @@ function serializeBoard(){
 
 // ---- load ----
 function loadFromText(text){
-  var blocks=[]; var re=/### FILE:\s*(.+?)\s*\n([\s\S]*?)(?:\n### END FILE|$)/g, m;
-  while((m=re.exec(text))!==null){ blocks.push({path:m[1].trim(), text:m[2]}); }
-  if(!blocks.length && text.trim()){
-    // tolerate a single bare concept with no FILE wrapper
-    blocks.push({path:"", text:text});
+  var lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+  var blocks = [];
+  var currentPath = "";
+  var currentLines = [];
+
+  function flushBlock() {
+    if (currentPath) {
+      var content = currentLines.join("\n").trim();
+      if (content) {
+        blocks.push({ path: currentPath, text: content });
+      }
+    }
   }
-  var boardBlock=null, taskBlocks=[];
+
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i];
+    var trimLine = line.trim();
+
+    if (trimLine.indexOf("### FILE:") === 0) {
+      flushBlock();
+      currentPath = trimLine.slice(9).trim();
+      currentLines = [];
+      continue;
+    }
+
+    var okfMatch = /<!--\s*OKF:BEGIN\s+concept=["']?([^\s"'>]+)["']?/i.exec(trimLine);
+    if (okfMatch) {
+      flushBlock();
+      currentPath = okfMatch[1].trim();
+      currentLines = [];
+      continue;
+    }
+
+    if (trimLine.indexOf("### END FILE") === 0 || trimLine.indexOf("<!-- OKF:END") === 0) {
+      flushBlock();
+      currentPath = "";
+      currentLines = [];
+      continue;
+    }
+
+    if (!currentPath) {
+      continue;
+    }
+
+    currentLines.push(line);
+  }
+  flushBlock();
+
+  if (!blocks.length && text.trim()) {
+    blocks.push({ path: "", text: text });
+  }
+
+  var boardBlock = null, taskBlocks = [];
   blocks.forEach(function(b){
-    var fm=parseFrontmatter(b.text);
-    var type=(fm.map.type||"").toLowerCase();
-    if(type==="board"){ boardBlock={block:b, fm:fm}; }
-    else if(type==="task"){ taskBlocks.push({block:b, fm:fm}); }
+    var fm = parseFrontmatter(b.text);
+    var type = (fm.map.type || "").toLowerCase();
+    if (type === "board") {
+      boardBlock = { block: b, fm: fm };
+    } else if (type === "task") {
+      taskBlocks.push({ block: b, fm: fm });
+    }
   });
 
-  if(boardBlock){
-    board.title=boardBlock.fm.map.title||"Untitled board";
-    board.columns=parseList(boardBlock.fm.map.columns);
-    board.configPath=boardBlock.block.path;
-    board.tasksDir=board.configPath.replace(/board\.md$/,"tasks/");
+  if (boardBlock) {
+    board.title = boardBlock.fm.map.title || "Untitled board";
+    board.columns = parseList(boardBlock.fm.map.columns);
+    board.configPath = boardBlock.block.path;
+    board.tasksDir = board.configPath.replace(/board\.md$/, "tasks/");
   }
-  if(!board.columns.length) board.columns=["Backlog","In Progress","Done"];
+  if (!board.columns.length) board.columns = ["Backlog", "In Progress", "Done"];
 
   // dedupe ids
-  var seenIds={}, dupes=[];
-  cards=[]; var order=0;
+  var seenIds = {}, dupes = [];
+  cards = []; var order = 0;
   taskBlocks.forEach(function(tb){
-    var f={}; tb.fm.keys.forEach(function(k){ f[k]=tb.fm.map[k]; });
-    f.type="Task";
-    var id=f.id||"";
-    if(seenIds[id]){ dupes.push(id); return; }
-    seenIds[id]=1;
-    var c={ path:tb.block.path, fields:f, body:tb.fm.body, order:order++, isNew:false };
-    c.snapshot=cardNormalKey(c);
+    var f = {}; tb.fm.keys.forEach(function(k){ f[k] = tb.fm.map[k]; });
+    f.type = "Task";
+    var id = f.id || "";
+    if (seenIds[id]) { dupes.push(id); return; }
+    seenIds[id] = 1;
+    var c = { path: tb.block.path, fields: f, body: tb.fm.body, order: order++, isNew: false };
+    c.snapshot = cardNormalKey(c);
     cards.push(c);
   });
 
-  boardSnapshot=JSON.stringify({title:board.title, columns:board.columns});
-  newCounter=0;
+  boardSnapshot = JSON.stringify({ title: board.title, columns: board.columns });
+  newCounter = 0;
   stampNow();
-  document.getElementById("boardTitle").value=board.title;
+  document.getElementById("boardTitle").value = board.title;
   render();
   return dupes;
 }
