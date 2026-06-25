@@ -28,6 +28,7 @@ Option Explicit
 
 Private m_BundleRoot As String
 Private Const STALE_DAYS  As Long   = 14
+Private Const SHARD_WARN_LINES As Long = 400   ' long-concept advisory threshold
 
 Private fso As Object
 
@@ -80,6 +81,9 @@ Private Sub ScanBundle(ByVal findings As Collection)
     Dim workingBuilds As Collection
     Set workingBuilds = New Collection
 
+    Dim longArr(0 To 999) As Variant
+    Dim longCount As Long: longCount = 0
+
     Dim f As Object
     Dim buildsFolder As Object
     Set buildsFolder = fso.GetFolder(buildsPath)
@@ -102,6 +106,13 @@ Private Sub ScanBundle(ByVal findings As Collection)
             If cStatus = "" Then AddFinding findings, "error", f.Name, "missing required field `status`"
             If cEffort = "" Then AddFinding findings, "error", f.Name, "missing required field `effort`"
             If cImpact = "" Then AddFinding findings, "error", f.Name, "missing required field `impact`"
+
+            ' Long-concept advisory: file is large enough to be worth sharding.
+            Dim lc As Long: lc = ConceptLineCount(content)
+            If lc >= SHARD_WARN_LINES Then
+                longArr(longCount) = Array(lc, f.Name)
+                longCount = longCount + 1
+            End If
 
             allFm(allFmCount) = Array(f.path, LCase(cStatus), f.Name)
             allFmCount = allFmCount + 1
@@ -180,6 +191,15 @@ Private Sub ScanBundle(ByVal findings As Collection)
     For i = 0 To staleCount - 1
         AddFinding findings, "warning", CStr(staleArr(i)(1)), CStr(staleArr(i)(2))
     Next i
+
+    ' Long-concept warnings: longest first.
+    If longCount > 1 Then SortByLineCountDesc longArr, longCount
+    Dim li As Long
+    For li = 0 To longCount - 1
+        AddFinding findings, "warning", CStr(longArr(li)(1)), _
+            "long concept: " & CStr(longArr(li)(0)) & " lines (>= " & SHARD_WARN_LINES & _
+            "); consider sharding (see skills/doc-sharding.md)"
+    Next li
 
     Dim archivedSet As Object
     Set archivedSet = CreateObject("Scripting.Dictionary")
@@ -426,3 +446,21 @@ Private Function ReadUtf8(ByVal path As String) As String
     ReadUtf8 = st.ReadText
     st.Close
 End Function
+
+Private Function ConceptLineCount(ByVal content As String) As Long
+    Dim n As String
+    n = Replace(Replace(content, vbCrLf, vbLf), vbCr, vbLf)
+    ConceptLineCount = UBound(Split(n, vbLf)) + 1
+End Function
+
+Private Sub SortByLineCountDesc(ByRef arr() As Variant, ByVal n As Long)
+    Dim i As Long, j As Long, tmp As Variant
+    For i = 1 To n - 1
+        tmp = arr(i): j = i - 1
+        Do While j >= 0
+            If CLng(arr(j)(0)) >= CLng(tmp(0)) Then Exit Do
+            arr(j + 1) = arr(j): j = j - 1
+        Loop
+        arr(j + 1) = tmp
+    Next i
+End Sub

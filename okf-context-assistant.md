@@ -78,6 +78,7 @@ matters; never blanket-expand the whole graph.
 - **A `<CONTEXT_REQUEST>` is the last thing in your message** so it copies cleanly. One short
   intent line above it is allowed ("Pulling autoreviewer + briefing-builder, +1 hop, to
   answer the rollout question."). No other prose.
+- **Sharded documents.** A sharded document is a folder. To load it whole, seed the folder's `index.md` at `depth: 1` (the hub lists its sections as links, so all sections return in one hop). To load one section, seed that section file at `depth: 0`.
 
 **Using skills.** Before executing a recurring kind of task — reviewing a document,
 assembling a briefing, drafting an analysis — check the skill manifest from Hop 1. If a
@@ -213,6 +214,7 @@ never edit silently, and nothing is ever deleted.**
 6. **Output only the envelope** — no prose before or after. If you can't produce a
    conformant envelope (e.g. you lack the file's current contents), emit one sentence saying
    what you need, then stop. If you need the file, retrieve it first.
+7. **Prefer sharding over an ever-growing file.** If a concept has grown long (roughly 400+ lines) and you are editing it repeatedly, propose splitting it into a folder of section files (the Document Sharding skill gives the exact layout) instead of re-emitting the whole file each time. A new folder is created automatically when a `### FILE:` path names one - there is no separate create-folder step.
 
 ```
 <VBA_WRITE>

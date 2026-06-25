@@ -110,6 +110,7 @@ def lint_bundle(
     bundle_root: Path,
     stale_days: int = 14,
     reference_date: Optional[date] = None,
+    shard_warn_lines: int = 400,
 ) -> list[Finding]:
     """
     Scan a bundle directory and return all integrity findings, sorted by
@@ -151,6 +152,18 @@ def lint_bundle(
         for field in ("status", "effort", "impact"):
             if not fm.get(field):
                 findings.append(Finding("error", f.name, f"missing required field `{field}`"))
+
+        # Check long concept advisory
+        content_lf = content.replace("\r\n", "\n").replace("\r", "\n")
+        line_count = content_lf.count("\n") + 1
+        if line_count >= shard_warn_lines:
+            findings.append(
+                Finding(
+                    "warning",
+                    f.name,
+                    f"long concept: {line_count} lines (>= {shard_warn_lines}); consider sharding (see skills/doc-sharding.md)",
+                )
+            )
 
         # Collect links for cross-file checks.
         links_by_path[str(f)] = _extract_links(content)
@@ -379,3 +392,65 @@ def test_single_working_build_no_wip_violation(tmp_path: Path) -> None:
     findings = lint_bundle(tmp_path, reference_date=REF_DATE)
     wip = [f for f in findings if "WIP violation" in f.message]
     assert wip == []
+
+
+def test_lint_shard_warning_over_threshold(tmp_path: Path) -> None:
+    builds = tmp_path / "builds"
+    builds.mkdir()
+    (builds / "long-build.md").write_text(
+        "---\ntype: Build\ntitle: Long\ndescription: Long concept\n"
+        "status: production\neffort: S\nimpact: high\ndomain: TSA\n"
+        "timestamp: 2026-06-18T00:00:00Z\nlast_touched: 2026-06-18\n---\n\n"
+        "line 1\nline 2\nline 3\nline 4\nline 5\n",
+        encoding="utf-8",
+    )
+    findings = lint_bundle(tmp_path, reference_date=REF_DATE, shard_warn_lines=5)
+    warnings = [f for f in findings if f.severity == "warning" and "long concept" in f.message]
+    assert len(warnings) == 1
+    assert "long concept" in warnings[0].message
+    assert "consider sharding" in warnings[0].message
+
+
+def test_lint_shard_warning_under_threshold(tmp_path: Path) -> None:
+    builds = tmp_path / "builds"
+    builds.mkdir()
+    (builds / "short-build.md").write_text(
+        "---\ntype: Build\ntitle: Short\ndescription: Short concept\n"
+        "status: production\neffort: S\nimpact: high\ndomain: TSA\n"
+        "timestamp: 2026-06-18T00:00:00Z\nlast_touched: 2026-06-18\n---\n\n"
+        "body\n",
+        encoding="utf-8",
+    )
+    findings = lint_bundle(tmp_path, reference_date=REF_DATE, shard_warn_lines=50)
+    warnings = [f for f in findings if f.severity == "warning" and "long concept" in f.message]
+    assert warnings == []
+
+
+def test_lint_shard_warning_inclusive_boundary(tmp_path: Path) -> None:
+    builds = tmp_path / "builds"
+    builds.mkdir()
+    content = (
+        "---\n"
+        "type: Build\n"
+        "title: Boundary\n"
+        "description: B\n"
+        "status: prod\n"
+        "effort: S\n"
+        "impact: high\n"
+        "domain: TSA\n"
+        "timestamp: T\n"
+        "last_touched: D\n"
+        "---\n"
+        "\n"
+        "body"
+    )
+    (builds / "boundary-build.md").write_text(content, encoding="utf-8")
+
+    findings_flagged = lint_bundle(tmp_path, reference_date=REF_DATE, shard_warn_lines=13)
+    warnings_flagged = [f for f in findings_flagged if f.severity == "warning" and "long concept" in f.message]
+    assert len(warnings_flagged) == 1
+    assert "long concept: 13 lines" in warnings_flagged[0].message
+
+    findings_not_flagged = lint_bundle(tmp_path, reference_date=REF_DATE, shard_warn_lines=14)
+    warnings_not_flagged = [f for f in findings_not_flagged if f.severity == "warning" and "long concept" in f.message]
+    assert warnings_not_flagged == []

@@ -135,7 +135,7 @@ Public Function ApplyWriteEnvelopeText(ByVal envelope As String, _
             existed = fso.FileExists(absPath)
 
             parentDir = fso.GetParentFolderName(absPath)
-            If Not fso.FolderExists(parentDir) Then fso.CreateFolder parentDir
+            If Not fso.FolderExists(parentDir) Then EnsureFolderTree parentDir
 
             WriteUtf8 absPath, fileContents(i)
             writeCount = writeCount + 1
@@ -245,4 +245,16 @@ Private Sub WriteUtf8(ByVal path As String, ByVal content As String)
     st.WriteText content
     st.SaveToFile path, 2
     st.Close
+End Sub
+
+' Create every missing folder in the chain down to dirPath (absolute, under m_BundleRoot).
+Private Sub EnsureFolderTree(ByVal dirPath As String)
+    If dirPath = "" Then Exit Sub
+    If fso.FolderExists(dirPath) Then Exit Sub
+    Dim parent As String
+    parent = fso.GetParentFolderName(dirPath)
+    If parent <> "" And Not fso.FolderExists(parent) Then EnsureFolderTree parent
+    On Error Resume Next
+    fso.CreateFolder dirPath
+    On Error GoTo 0
 End Sub
