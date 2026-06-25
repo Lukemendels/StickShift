@@ -1,0 +1,828 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Email Composer - StickShift Tool</title>
+<style>
+  /* Curated HSL Color Palette & Modern Reset */
+  :root {
+    --bg-color: #0f172a;
+    --card-bg: #1e293b;
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --border-color: #334155;
+    
+    --primary: #6366f1; /* Indigo */
+    --primary-hover: #4f46e5;
+    --success: #10b981; /* Emerald */
+    --success-hover: #059669;
+    --info: #0284c7; /* Sky */
+    --info-hover: #0369a1;
+    
+    --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    line-height: 1.5;
+    padding: 2.5rem 1.5rem;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .container {
+    max-width: 68rem;
+    margin: 0 auto;
+    width: 100%;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  header {
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+
+  .brand h1 {
+    font-size: 2.25rem;
+    font-weight: 800;
+    letter-spacing: -0.025em;
+    background: linear-gradient(135deg, #a5b4fc 0%, #6366f1 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 0.25rem;
+  }
+
+  .brand p {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+  }
+
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    flex: 1;
+  }
+
+  @media (min-width: 768px) {
+    .main-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  .card {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  }
+
+  .card-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.75rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  textarea {
+    width: 100%;
+    height: 320px;
+    background-color: #0b0f19;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-primary);
+    padding: 1rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.9rem;
+    resize: none;
+    line-height: 1.45;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  textarea:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem 1.25rem;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    border: none;
+    transition: background-color 0.2s, transform 0.1s;
+    outline: none;
+    gap: 0.5rem;
+  }
+
+  .btn:active {
+    transform: scale(0.98);
+  }
+
+  .btn-primary {
+    background-color: var(--primary);
+    color: white;
+  }
+  .btn-primary:hover {
+    background-color: var(--primary-hover);
+  }
+
+  .btn-success {
+    background-color: var(--success);
+    color: white;
+  }
+  .btn-success:hover {
+    background-color: var(--success-hover);
+  }
+  .btn-success.disabled {
+    background-color: #064e3b;
+    color: #6ee7b7;
+    pointer-events: none;
+    opacity: 0.6;
+  }
+
+  .btn-info {
+    background-color: var(--info);
+    color: white;
+  }
+  .btn-info:hover {
+    background-color: var(--info-hover);
+  }
+  .btn-info.disabled {
+    background-color: #0c4a6e;
+    color: #7dd3fc;
+    pointer-events: none;
+    opacity: 0.6;
+  }
+
+  .preview-pane {
+    background-color: #ffffff;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    height: 320px;
+    padding: 1.25rem;
+    overflow-y: auto;
+    color: #1e293b;
+    box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+  }
+
+  /* Formatting inside preview pane */
+  .preview-pane p {
+    font-family: Calibri, Arial, sans-serif;
+    font-size: 11pt;
+    margin-bottom: 1em;
+    line-height: 1.4;
+    color: #1e293b;
+  }
+
+  .preview-pane ul {
+    font-family: Calibri, Arial, sans-serif;
+    font-size: 11pt;
+    margin-bottom: 1em;
+    padding-left: 20px;
+    color: #1e293b;
+  }
+
+  .preview-pane li {
+    margin-bottom: 0.5em;
+    line-height: 1.4;
+  }
+
+  .preview-pane strong {
+    font-weight: bold;
+    color: #0f172a;
+  }
+
+  .error-message {
+    color: #ef4444;
+    font-size: 0.85rem;
+    font-weight: 500;
+    min-height: 1.25rem;
+  }
+
+  .action-row {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .action-row .btn {
+    flex: 1;
+    min-width: 150px;
+  }
+
+  .hint-bar {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    background-color: rgba(255, 255, 255, 0.03);
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    border: 1px dashed var(--border-color);
+    text-align: center;
+  }
+
+  .feedback-toast {
+    font-size: 0.85rem;
+    color: #10b981;
+    font-weight: 600;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .feedback-toast.visible {
+    opacity: 1;
+  }
+
+  /* Onboarding / Setup Panel styling */
+  .ss-panel {
+    display: none;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background-color: #1e293b;
+    padding: 1.5rem;
+    margin-top: 1rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .ss-panel:not(.open) {
+    display: none !important;
+  }
+
+  .ss-panel-title {
+    font-size: 1rem;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .ss-branch {
+    display: none;
+    border-top: 1px solid var(--border-color);
+    padding-top: 1rem;
+    margin-top: 0.5rem;
+  }
+
+  .ss-branch.show {
+    display: block;
+  }
+
+  .ss-branch ol {
+    padding-left: 1.25rem;
+    margin-bottom: 1rem;
+  }
+
+  .ss-branch li {
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    color: #cbd5e1;
+  }
+
+  .btn-sm {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+    border-radius: 6px;
+  }
+
+  .btn-sec {
+    background-color: #475569;
+    color: white;
+  }
+  .btn-sec:hover {
+    background-color: #334155;
+  }
+
+  .ss-btn-group {
+    display: flex;
+    gap: 0.75rem;
+  }
+
+  footer {
+    margin-top: 3rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+  }
+
+  .footer-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.8rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    transition: color 0.2s;
+  }
+
+  .footer-btn:hover {
+    color: var(--text-primary);
+  }
+</style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <div class="brand">
+        <h1>Email Composer</h1>
+        <p>Addresses compose via URL; clipboard carries formatted rich text.</p>
+      </div>
+      <div class="feedback-toast" id="copy-feedback"></div>
+    </header>
+
+    <div class="main-grid">
+      <!-- Input Panel -->
+      <div class="card">
+        <div class="card-title">
+          <span>Markdown Draft Input</span>
+          <button class="btn btn-primary btn-sm" onclick="parseDraft()">Parse Draft</button>
+        </div>
+        <textarea id="draft" placeholder="TO: recipient@tsa.dhs.gov&#10;CC: cc-recip@tsa.dhs.gov&#10;SUBJECT: Important Update&#10;---&#10;Hi Team,&#10;&#10;Here are the project milestones:&#10;- Milestone 1&#10;- Milestone 2&#10;&#10;Regards,&#10;Luke"></textarea>
+        <div class="error-message" id="error"></div>
+      </div>
+
+      <!-- Preview & Launcher Panel -->
+      <div class="card">
+        <div class="card-title">Formatted Preview</div>
+        <div class="preview-pane" id="preview">
+          <p style="color: #94a3b8; font-style: italic;">Your formatted email preview will appear here after parsing...</p>
+        </div>
+        
+        <div class="action-row">
+          <button class="btn btn-info disabled" id="copy-btn" onclick="copyFormattedBody()">
+            <svg style="width: 18px; height: 18px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+            Copy Formatted Body
+          </button>
+          <a class="btn btn-success disabled" id="mailto-btn" href="#" target="_blank">
+            <svg style="width: 18px; height: 18px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 19v-8.93a2 2 0 01.89-1.664l8-5.333a2 2 0 012.22 0l8 5.333A2 2 0 0121 10.07V19M3 19a2 2 0 002 2h14a2 2 0 002-2M3 19l6.75-4.5M21 19l-6.75-4.5M3 10l6.75 4.5M21 10l-6.75 4.5m0 0l-2.25-1.5a2 2 0 00-2.22 0l-2.25 1.5"/></svg>
+            Open in Outlook
+          </a>
+        </div>
+
+        <div class="hint-bar">
+          <strong>Flow:</strong> Copy formatted body &rarr; Open in Outlook &rarr; click into body &rarr; paste &rarr; send.
+        </div>
+      </div>
+    </div>
+
+    <!-- Onboarding / Setup Panel -->
+    <div class="ss-panel" id="ss-panel">
+      <div class="ss-panel-title">
+        <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+        <span>Set up with StickShift</span>
+      </div>
+      <p style="font-size: 0.9rem; color: #cbd5e1;">
+        StickShift is an Excel cockpit that gives your AI assistant a persistent memory and lets it launch local browser tools like this one. This tool also works on its own.
+      </p>
+      <p style="font-size: 0.9rem; font-weight: 600; color: var(--text-secondary);">
+        Are you using StickShift?
+      </p>
+      <div class="ss-btn-group">
+        <button class="btn btn-sec btn-sm" id="ss-yes" onclick="showBranch('yes')">Yes</button>
+        <button class="btn btn-sec btn-sm" id="ss-no" onclick="showBranch('no')">No</button>
+      </div>
+
+      <!-- Yes Branch -->
+      <div class="ss-branch" id="ss-branch-yes">
+        <ol>
+          <li>In StickShift, click <strong>Install HTML Tool</strong> and pick this file. This copies the tool and installs its skill in one step.</li>
+          <li>Or copy the skill and paste it into **Apply Write Envelope**:
+            <button class="btn btn-primary btn-sm" style="margin-top: 0.5rem; display: block;" onclick="copySkill()">Copy skill</button>
+          </li>
+        </ol>
+      </div>
+
+      <!-- No Branch -->
+      <div class="ss-branch" id="ss-branch-no">
+        <p style="font-size: 0.9rem; color: #cbd5e1;">
+          StickShift is an Excel cockpit tool that integrates with VBA. You can use this tool standalone right now - just paste your draft, parse, copy and open Outlook. Come back to set up the integration when you're ready.
+        </p>
+      </div>
+    </div>
+
+    <footer>
+      <span>&copy; 2026 StickShift Cockpit Integration</span>
+      <button class="footer-btn" onclick="toggleSetupPanel()">
+        <span>⚙ Part of StickShift</span>
+        <span id="footer-arrow">&#9656;</span>
+      </button>
+    </footer>
+  </div>
+
+  <!-- Identity declaration -->
+  <script>
+    window.STICKSHIFT_TOOL = {
+      id: "email-composer",
+      title: "Email Composer",
+      version: "0.1",
+      skill: "email-composer.skill.md",
+      io: "client-only"
+    };
+  </script>
+
+  <!-- Embedded companion skill -->
+  <script type="text/markdown" id="stickshift-skill" data-skill-slug="email-composer">
+---
+type: Skill
+okf_version: "0.1"
+title: Email Composer
+description: Drafts an outbound email from a recipient roster and hands the approved draft to the EmailComposer HTML tool. The skill OWNS the drafting conversation; the tool OWNS the encoding and the formatted-body clipboard. Do NOT percent-encode bodies in chat. On approval, emit exactly one HTML_OPEN envelope so the operator can compose, copy the formatted body, and send.
+tags:
+  - email-drafting
+  - html-tool
+  - user-intent-trigger
+timestamp: 2026-06-25T00:00:00Z
+---
+
+# email-composer
+
+## Why this skill exists (the one fact that shapes everything)
+
+A `mailto:` body is permanently plain text. It cannot carry bullets, bold, or
+any formatting — that is fixed by the URL scheme, not by us. But the operator
+*needs bullets* in real email.
+
+The resolution: **mailto carries To + Subject only; the body travels on the
+clipboard as rich `text/html`.** The clipboard is the formatting channel; the
+URL is the addressing channel. That split is the whole design, and it lives in
+the **EmailComposer HTML tool** — not here. This skill never encodes a `mailto`
+link and never touches percent-escapes. Your job is the *conversation*: gather,
+draft, and on approval hand off.
+
+## Inputs you can expect
+
+StickShift bundles in a **recipient roster** — a markdown list of names and
+addresses, each optionally with a one-line note and a link to a deeper concept:
+
+```
+- Paul Meyers <paul.meyers@tsa.dhs.gov> — Enterprise Support, first Paperclip dev. [detail](people/paul-meyers.md)
+- Sutton <sutton@tsa.dhs.gov> — regulatory economist, cold-read validator. [detail](people/sutton.md)
+```
+
+The note and the detail link exist so your draft can be *specific*. If the task
+needs context a roster line links to but does not contain, go one level deeper
+**before** drafting:
+
+> Emit exactly one `<CONTEXT_REQUEST>` listing the recipient detail concepts you
+> need, nothing else. Wait for the operator to return them, then draft.
+
+Do not request detail you will not use. One round of deepening is the norm; a
+second is rare.
+
+## The loop (AHA: AI surfaces / human decides / AI executes / human verifies)
+
+1. **Surface.** Draft the email and show it *in chat as a fenced block* in the
+   handoff format below. This is the human's decision surface — readable plain
+   text, no link, no tool yet. Invite edits.
+2. **Iterate.** While the operator is changing wording, recipients, or tone, you
+   are still in the drafting phase. **Do not emit any envelope.** Re-show the
+   updated fenced block each round.
+3. **Hand off.** When the latest message signals approval ("looks good,"
+   "approve," "send it," "that's it"), emit exactly one `<HTML_OPEN>` envelope
+   for `email-composer.html` and nothing else. The operator opens the tool,
+   pastes the approved block, copies the formatted body, opens the addressed
+   compose window, pastes, scans, and sends.
+
+The handoff is a hard switch, not a blend: drafting turns produce prose + a
+fenced block; the approval turn produces *only* the envelope.
+
+## Handoff format (what the tool parses)
+
+Show every draft as a single fenced block in this exact shape. Headers above the
+`---`, body below. The body is plain markdown — paragraphs, `- ` bullets, and
+`**bold**` only. The tool renders this subset to HTML for the clipboard; nothing
+fancier survives Outlook's paste sanitizer anyway.
+
+```
+TO: paul.meyers@tsa.dhs.gov, sutton@tsa.dhs.gov
+CC:
+SUBJECT: StickShift install — Thursday 2pm
+---
+Paul, Sutton,
+
+Confirming Thursday at 2pm. We will cover:
+
+- Installing the cockpit on your machine
+- A walk through the five buttons
+- Your first real write to a concept tree
+
+Bring nothing but the laptop. See you then.
+
+Luke
+```
+
+Rules for the block:
+- `TO:` and `CC:` are comma-separated. Leave `CC:` present but empty if none.
+- Put a literal em-dash, `&`, `%`, or smart quote in the SUBJECT if the writing
+  calls for it. **You do not encode them** — the tool does, and the operator
+  eyeballs the subject in the compose window before sending (the verify step).
+- The body may contain anything; it rides the clipboard, so no character is
+  dangerous and there is no length limit to respect here.
+
+## Output contract (GPT-5.1 / DHSChat)
+
+- **Drafting turn:** a short framing sentence + the fenced block. Nothing else.
+- **Deepening turn:** exactly one `<CONTEXT_REQUEST>` envelope. Nothing else.
+- **Approval turn:** exactly one `<HTML_OPEN>` envelope. No "here is your link,"
+  no trailing question, no second envelope.
+
+```
+<HTML_OPEN>
+tool: email-composer.html
+</HTML_OPEN>
+```
+
+## Do NOT
+
+- Do not build or emit a `mailto:` link yourself.
+- Do not percent-encode anything (`%20`, `%0D%0A`, `&` → `%26` …). That logic was
+  removed on purpose; the clipboard path makes it unnecessary and the tool owns
+  the small remainder.
+- Do not open the tool while the operator is still editing.
+- Do not paste the body into the link. The body is never in the URL.
+  </script>
+
+  <!-- Interactive Logic -->
+  <script>
+    function parseDraft() {
+      const draftText = document.getElementById("draft").value;
+      const previewEl = document.getElementById("preview");
+      const errorEl = document.getElementById("error");
+      
+      previewEl.innerHTML = "";
+      errorEl.textContent = "";
+      
+      let cleanText = draftText.replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
+      
+      if (cleanText.startsWith("```")) {
+        const lines = cleanText.split("\n");
+        if (lines[0].startsWith("```")) lines.shift();
+        if (lines[lines.length - 1].startsWith("```")) lines.pop();
+        cleanText = lines.join("\n").trim();
+      }
+      
+      const dividerIndex = cleanText.indexOf("---");
+      if (dividerIndex === -1) {
+        errorEl.textContent = "Could not find the '---' divider between headers and body.";
+        document.getElementById("mailto-btn").classList.add("disabled");
+        document.getElementById("copy-btn").classList.add("disabled");
+        previewEl.innerHTML = '<p style="color: #94a3b8; font-style: italic;">Your formatted email preview will appear here after parsing...</p>';
+        return;
+      }
+      
+      const headerPart = cleanText.substring(0, dividerIndex).trim();
+      const bodyPart = cleanText.substring(dividerIndex + 3).trim();
+      
+      let toStr = "";
+      let ccStr = "";
+      let subjectStr = "";
+      
+      const headerLines = headerPart.split("\n");
+      headerLines.forEach(line => {
+        const parts = line.split(":");
+        if (parts.length >= 2) {
+          const key = parts[0].trim().toLowerCase();
+          const val = parts.slice(1).join(":").trim();
+          if (key === "to") toStr = val;
+          else if (key === "cc") ccStr = val;
+          else if (key === "subject") subjectStr = val;
+        }
+      });
+      
+      const toList = toStr.split(",").map(s => s.trim()).filter(s => s.length > 0);
+      const ccList = ccStr.split(",").map(s => s.trim()).filter(s => s.length > 0);
+      
+      const toJoined = toList.join(",");
+      const ccJoined = ccList.join(",");
+      
+      let mailto = "mailto:" + toJoined;
+      const queryParams = [];
+      if (ccJoined) {
+        queryParams.push("cc=" + encodeURIComponent(ccJoined));
+      }
+      if (subjectStr) {
+        queryParams.push("subject=" + encodeURIComponent(subjectStr));
+      }
+      if (queryParams.length > 0) {
+        mailto += "?" + queryParams.join("&");
+      }
+      
+      const mailtoBtn = document.getElementById("mailto-btn");
+      mailtoBtn.href = mailto;
+      mailtoBtn.classList.remove("disabled");
+      
+      const htmlResult = renderMarkdown(bodyPart);
+      previewEl.innerHTML = htmlResult;
+      document.getElementById("copy-btn").classList.remove("disabled");
+    }
+
+    function renderMarkdown(md) {
+      let escaped = md
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+      
+      const lines = escaped.split("\n");
+      let output = "";
+      let inList = false;
+      let currentList = [];
+      
+      function flushList() {
+        if (inList && currentList.length > 0) {
+          output += '<ul style="margin-top: 0; margin-bottom: 1em; padding-left: 20px; font-family: Calibri, Arial, sans-serif; font-size: 11pt; color: #1e293b;">';
+          currentList.forEach(item => {
+            output += '<li style="margin-bottom: 0.5em; line-height: 1.4;">' + processInline(item) + '</li>';
+          });
+          output += '</ul>';
+          currentList = [];
+          inList = false;
+        }
+      }
+      
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const trimmed = line.trim();
+        const isBullet = trimmed.startsWith("- ") || trimmed.startsWith("* ");
+        
+        if (isBullet) {
+          inList = true;
+          currentList.push(trimmed.substring(2).trim());
+        } else {
+          if (trimmed === "") {
+            flushList();
+          } else {
+            flushList();
+            let para = trimmed;
+            while (i + 1 < lines.length && lines[i + 1].trim() !== "" && !(lines[i + 1].trim().startsWith("- ") || lines[i + 1].trim().startsWith("* "))) {
+              i++;
+              para += "\n" + lines[i].trim();
+            }
+            const formattedPara = processInline(para).replace(/\n/g, "<br>");
+            output += '<p style="margin-top: 0; margin-bottom: 1em; font-family: Calibri, Arial, sans-serif; font-size: 11pt; line-height: 1.4; color: #1e293b;">' + formattedPara + '</p>';
+          }
+        }
+      }
+      flushList();
+      return output;
+    }
+
+    function processInline(text) {
+      return text.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+    }
+
+    function copyFormattedBody() {
+      const previewEl = document.getElementById("preview");
+      if (!previewEl.innerHTML || previewEl.querySelector("p")?.style.fontStyle === "italic") return;
+      
+      if (window.isSecureContext && navigator.clipboard && window.ClipboardItem) {
+        const html = previewEl.innerHTML;
+        const plain = previewEl.innerText;
+        
+        const htmlBlob = new Blob([html], { type: "text/html" });
+        const plainBlob = new Blob([plain], { type: "text/plain" });
+        
+        navigator.clipboard.write([
+          new ClipboardItem({
+            "text/html": htmlBlob,
+            "text/plain": plainBlob
+          })
+        ]).then(() => {
+          showCopyFeedback("Copied!");
+        }).catch(() => {
+          fallbackCopy(previewEl);
+        });
+      } else {
+        fallbackCopy(previewEl);
+      }
+    }
+
+    function fallbackCopy(previewEl) {
+      try {
+        const range = document.createRange();
+        range.selectNodeContents(previewEl);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        const ok = document.execCommand("copy");
+        sel.removeAllRanges();
+        if (ok) {
+          showCopyFeedback("Copied (formatted)!");
+        } else {
+          showCopyFeedback("Copy failed - select text manually.");
+        }
+      } catch (e) {
+        showCopyFeedback("Copy failed.");
+      }
+    }
+
+    function showCopyFeedback(msg) {
+      const feedback = document.getElementById("copy-feedback");
+      feedback.textContent = msg;
+      feedback.classList.add("visible");
+      setTimeout(() => {
+        feedback.classList.remove("visible");
+      }, 3000);
+    }
+
+    /* Onboarding Panel Toggle & Branching */
+    function toggleSetupPanel() {
+      const panel = document.getElementById("ss-panel");
+      panel.classList.toggle("open");
+      const arrow = document.getElementById("footer-arrow");
+      if (panel.classList.contains("open")) {
+        arrow.innerHTML = "&#9662;"; // down arrow
+      } else {
+        arrow.innerHTML = "&#9656;"; // right arrow
+      }
+    }
+
+    function showBranch(branch) {
+      if (branch === "yes") {
+        document.getElementById("ss-branch-yes").classList.add("show");
+        document.getElementById("ss-branch-no").classList.remove("show");
+      } else {
+        document.getElementById("ss-branch-no").classList.add("show");
+        document.getElementById("ss-branch-yes").classList.remove("show");
+      }
+    }
+
+    function copySkill() {
+      const skillText = document.getElementById("stickshift-skill").textContent.trim();
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(skillText).then(() => {
+          alert("Skill copied to clipboard!");
+        }).catch(() => {
+          legacyCopyText(skillText);
+        });
+      } else {
+        legacyCopyText(skillText);
+      }
+    }
+
+    function legacyCopyText(text) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus(); ta.select();
+      try {
+        const ok = document.execCommand('copy');
+        if (ok) alert("Skill copied to clipboard!");
+        else alert("Copy failed - copy manually.");
+      } catch (e) {
+        alert("Copy failed.");
+      }
+      document.body.removeChild(ta);
+    }
+  </script>
+</body>
+</html>
