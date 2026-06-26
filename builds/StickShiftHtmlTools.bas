@@ -44,15 +44,15 @@ Public Sub InstallHtmlTool()
     If dlg.Show <> -1 Then Exit Sub ' user cancelled
 
     Dim srcHtml As String: srcHtml = dlg.SelectedItems(1)
-    Dim htmlDir As String: htmlDir = StickShiftConfig.HtmlDir()
+    Dim htmlDir As String: htmlDir = StickShiftConfig.htmlDir()
     If htmlDir = "" Then Exit Sub
 
-    Dim leafName As String: leafName = fso.GetFileName(srcHtml)
-    fso.CopyFile srcHtml, htmlDir & leafName, True
+    Dim LeafName As String: LeafName = fso.GetFileName(srcHtml)
+    fso.CopyFile srcHtml, htmlDir & LeafName, True
 
     ' --- Extract embedded skill from the copied HTML ---
     Dim htmlContent As String
-    htmlContent = ReadUtf8(htmlDir & leafName)
+    htmlContent = ReadUtf8(htmlDir & LeafName)
 
     Dim startScriptPos As Long
     startScriptPos = InStr(1, htmlContent, "<script", vbTextCompare)
@@ -125,7 +125,7 @@ Public Sub InstallHtmlTool()
             prefix = Left(skillMarkdown, toolPos - 1)
             Dim suffix As String
             suffix = Mid(skillMarkdown, eolPos)
-            skillMarkdown = prefix & "tool: " & leafName & suffix
+            skillMarkdown = prefix & "tool: " & LeafName & suffix
         End If
     End If
 
@@ -143,14 +143,29 @@ Public Sub InstallHtmlTool()
 
     If success Then
         StickShiftIndexGenerator.GenerateStickShiftIndexes
-        MsgBox "Installed tool: " & leafName & vbLf & _
-               "Skill written to: skills/" & skillSlug & ".md", _
-               vbInformation, "StickShift"
+
+        ' Write success message into StickShift!B16:D16 (merged cell) with timestamp
+        Dim ws As Object
+        Dim ts As String
+        Dim msg As String
+
+        msg = "Installed tool: " & LeafName & vbLf & _
+              "Skill written to: skills/" & skillSlug & ".md"
+        ts = Format(Now(), "yyyy-mm-dd hh:mm:ss")
+
+        On Error Resume Next
+        Set ws = ThisWorkbook.Worksheets("StickShift")
+        If Not ws Is Nothing Then
+            ws.Range("B16:D16").Value = ts & "  |  " & msg
+            ws.Range("B16:D16").WrapText = True
+        End If
+        On Error GoTo 0
     Else
         MsgBox "Failed to write companion skill to skills/" & skillSlug & ".md", _
                vbCritical, "StickShift"
     End If
 End Sub
+
 
 
 Private Function ReadUtf8(ByVal path As String) As String
