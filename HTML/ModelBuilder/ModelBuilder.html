@@ -119,10 +119,15 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   table.input{border-collapse:collapse; font-family:var(--mono); font-size:12px}
   table.input td{border:1px solid var(--line); padding:4px 9px; white-space:nowrap; min-width:54px; height:24px}
   td.blocklbl{color:var(--signal); font-weight:600; border:none; padding-top:14px}
-  td.titlelbl{color:var(--ink); font-weight:600; border:none; font-family:var(--sans); font-size:13px}
+  td.titlelbl{color:var(--ink); font-weight:700; border:none; font-family:'Times New Roman',serif; font-size:18px; padding:8px 12px}
+  td.subtitlelbl{color:var(--muted); border:none; font-family:var(--mono); font-size:10px; padding:2px 12px 6px}
+  td.sectionlbl{color:#1a3a6b; background:#d9e1f2; font-weight:700; font-family:'Times New Roman',serif; font-size:12px; border:1px solid #a0b0d0; padding:4px 9px}
+  td.hdrlbl{color:#1a3a6b; background:#dce6f1; font-weight:700; font-family:'Times New Roman',serif; font-size:11px; border:1px solid #b0bfce; padding:4px 9px; white-space:pre-wrap}
   td.wired{color:var(--wire)}        /* a live formula */
   td.wired .v{color:var(--muted)}    /* its cached value, dimmed */
   td.blank{background:#0c0f13}
+  td.blank.spacer{background:#0c0f13; height:6px; border:none; padding:0}
+
   footer{
     border-top:1px solid var(--line); padding:8px 20px; background:var(--raised);
     font-family:var(--mono); font-size:11px; color:var(--muted);
@@ -381,6 +386,44 @@ function refTab(t){return needsQuote(t)?"'"+t.replace(/'/g,"''")+"'":t;}
 function makeNamer(){const used=new Set();return function(fs,sn){let base=(fs+"__"+sn).replace(/[\\\/\?\*\[\]:]/g,'_');if(base.length>31)base=base.slice(0,31);let n=base,i=1;while(used.has(n.toLowerCase())){const s='~'+i++;n=base.slice(0,31-s.length)+s;}used.add(n.toLowerCase());return n;};}
 function rewriteFormula(f,map){let flagged=false;const out=f.replace(/('([^']|'')+'|[A-Za-z_][A-Za-z0-9_]*)\s*!/g,(m,raw)=>{let t=raw;if(t.startsWith("'"))t=t.slice(1,-1).replace(/''/g,"'");if(map.has(t))return refTab(map.get(t))+'!';flagged=true;return m;});return{formula:out,flagged};}
 
+/* ---- INPUT sheet style helpers (mirrors VBA cell extractor schema) ---- */
+// SheetJS Community does not round-trip rich formatting, but we emit
+// the `s` style object so xlsx-aware readers (ExcelJS, etc.) can use it,
+// and we set !cols / !rows so at least column widths and row heights land.
+
+function sCellStyle(opts){
+  // opts: { bold, sz, name, bgColor, fgColor, halign, valign, wrapText, numFmt }
+  const defaults={name:'Times New Roman',sz:11,bold:false,italic:false,
+    halign:'left',valign:'bottom',wrapText:false,bgColor:'FFFFFFFF',fgColor:'FF000000',numFmt:'General'};
+  const o=Object.assign({},defaults,opts);
+  return {
+    font:{name:o.name,sz:o.sz,bold:o.bold,italic:o.italic,color:{rgb:o.fgColor}},
+    fill:{fgColor:{rgb:o.bgColor},patternType:'solid'},
+    alignment:{horizontal:o.halign,vertical:o.valign,wrapText:o.wrapText},
+    numFmt:o.numFmt
+  };
+}
+
+// xlRGB from Excel VBA FontColor integer (BGR long → RRGGBB hex)
+// Excel stores as a signed long where 0 = black, 16777215 = white.
+// For our generated sheet we just use hex RGB directly.
+const S_TITLE  = sCellStyle({sz:18,bold:false,name:'Times New Roman',wrapText:true,
+                              bgColor:'FFFFFFFF',halign:'general',valign:'bottom'});
+const S_SECTION= sCellStyle({sz:12,bold:true, name:'Times New Roman',wrapText:false,
+                              bgColor:'FFD9E1F2',halign:'left',valign:'center'});// light-blue section header
+const S_HEADER = sCellStyle({sz:11,bold:true, name:'Times New Roman',wrapText:true,
+                              bgColor:'FFDCE6F1',halign:'left',valign:'center'});
+const S_FORMULA= sCellStyle({sz:11,bold:false,name:'Times New Roman',wrapText:false,
+                              bgColor:'FFFFFFFF',halign:'left',valign:'bottom'});
+const S_BLANK  = sCellStyle({sz:11,bold:false,name:'Times New Roman',wrapText:false,
+                              bgColor:'FFFFFFFF',halign:'general',valign:'bottom'});
+
+function mkCell(t,v,s,extra){
+  const c={t:t,v:v,s:s};
+  if(extra)Object.assign(c,extra);
+  return c;
+}
+
 function buildModel(sources){
   const out=XLSX.utils.book_new();
   const name=makeNamer();
@@ -403,26 +446,68 @@ function buildModel(sources){
       blocks.push({tab:tab,ref:ref,src:src});
     }
   }
-  const input={}; let row=0;
-  const set=(r,c,o)=>{input[XLSX.utils.encode_cell({r:r,c:c})]=o;};
-  set(row,0,{t:'s',v:'MODEL INPUT  ·  built '+new Date().toISOString().slice(0,16).replace('T',' ')});
-  row+=2;
-  let maxCol=0;
+
+  // ---- Build the INPUT sheet ----
+  const input={}; let row=0; let maxCol=0;
+  const set=(r,c,cell)=>{input[XLSX.utils.encode_cell({r,c})]=cell;};
+
+  // Row 0: Title row (mirrors Inputs!A1 in VBA extractor sample: Times New Roman 18, RowHeight 27)
+  const builtAt=new Date().toISOString().slice(0,16).replace('T',' ');
+  set(row,0,mkCell('s','Inputs',S_TITLE));
+  // Row 1: subtitle / timestamp
+  set(row+1,0,mkCell('s','Built: '+builtAt,sCellStyle({sz:10,name:'Times New Roman',halign:'left',valign:'bottom',bgColor:'FFFFFFFF'})));
+  row+=3; // two header rows + blank spacer
+
   for(const blk of blocks){
     const rng=XLSX.utils.decode_range(blk.ref);
-    set(row,0,{t:'s',v:blk.tab}); row+=1;
     const nC=rng.e.c-rng.s.c+1, nR=rng.e.r-rng.s.r+1;
-    for(let rr=0;rr<nR;rr++)for(let cc=0;cc<nC;cc++){
-      const addr=XLSX.utils.encode_cell({r:rng.s.r+rr,c:rng.s.c+cc});
-      const sc=blk.src[addr]; if(!sc)continue;
-      const cell={t:sc.t||'n',f:refTab(blk.tab)+'!'+addr,v:sc.v};
-      if(sc.z)cell.z=sc.z;
-      set(row+rr,cc,cell);
+
+    // Section header row: source tab name (bold, blue fill, Times New Roman 12)
+    set(row,0,mkCell('s',blk.tab,S_SECTION));
+    // fill remaining cols in section header with same style so it looks like a merged band
+    for(let cc=1;cc<nC;cc++) set(row,cc,mkCell('s','',S_SECTION));
+    row+=1;
+
+    // Column header row (first row of source data shown as header chips)
+    for(let cc=0;cc<nC;cc++){
+      const addr=XLSX.utils.encode_cell({r:rng.s.r,c:rng.s.c+cc});
+      const sc=blk.src[addr];
+      const hdrVal=sc&&sc.v!==undefined?String(sc.v):'';
+      set(row,cc,mkCell('s',hdrVal,S_HEADER));
     }
+    row+=1;
+
+    // Data rows: formula-wired cells (rows after header in source range)
+    for(let rr=1;rr<nR;rr++){
+      for(let cc=0;cc<nC;cc++){
+        const addr=XLSX.utils.encode_cell({r:rng.s.r+rr,c:rng.s.c+cc});
+        const sc=blk.src[addr];
+        if(!sc){set(row+rr-1,cc,mkCell('z',undefined,S_BLANK));continue;}
+        const extra={f:refTab(blk.tab)+'!'+addr};
+        if(sc.z)extra.z=sc.z;
+        set(row+rr-1,cc,mkCell(sc.t||'s',sc.v,S_FORMULA,extra));
+      }
+    }
+
     maxCol=Math.max(maxCol,nC-1);
-    row+=nR+1;
+    row+=(nR-1)+1; // data rows + blank spacer between blocks
   }
+
+  // Set !ref
   input['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:Math.max(row,1),c:Math.max(maxCol,0)}});
+
+  // !cols: set column widths to match ColumnWidth ~61.71 chars ≈ 62 chars in SheetJS wch units
+  // (VBA ColumnWidth is in character units; SheetJS uses the same unit in !cols[n].wch)
+  const colWidth=Math.min(62,Math.max(8,Math.round(61.71)));
+  input['!cols']=[];
+  for(let c=0;c<=maxCol;c++) input['!cols'].push({wch:colWidth});
+
+  // !rows: title row tall (27pt), section headers (18pt), others default
+  // SheetJS hpt = height in points
+  input['!rows']=[{hpt:27},{hpt:15}]; // title + subtitle
+  // remaining rows use default; section/header rows we can't easily pre-assign
+  // without knowing exact positions, so we leave them at auto.
+
   out.SheetNames.unshift('INPUT'); out.Sheets['INPUT']=input;
   return {wb:out,report:report,input:input};
 }
@@ -510,23 +595,49 @@ function renderFlags(flags){
 function renderPreview(input){
   const rng=XLSX.utils.decode_range(input['!ref']);
   let html='<div class="legend"><span><span class="dot" style="background:var(--wire)"></span>formula wire</span>'+
-    '<span><span class="dot" style="background:var(--signal)"></span>source tab header</span></div>'+
+    '<span><span class="dot" style="background:var(--signal)"></span>column header</span>'+
+    '<span><span class="dot" style="background:#d9e1f2;border:1px solid #a0b0d0"></span>section band</span></div>'+
     '<div class="tablewrap"><table class="input">';
   for(let r=rng.s.r;r<=rng.e.r;r++){
+    const firstCellKey=XLSX.utils.encode_cell({r:r,c:0});
+    const firstCell=input[firstCellKey];
+    if(!firstCell&&r>1){
+      // blank spacer row — render as thin separator
+      html+='<tr><td class="blank spacer" colspan="'+(rng.e.c-rng.s.c+1)+'"></td></tr>';
+      continue;
+    }
+    // Detect row type by style signature stored as a data attribute on the cell
+    const style=firstCell&&firstCell.s?firstCell.s:null;
+    const isTitleRow = r===0;
+    const isSubtitle  = r===1;
+    const isSectionRow= style&&style.fill&&style.fill.fgColor&&style.fill.fgColor.rgb==='FFD9E1F2';
+    const isHeaderRow = style&&style.fill&&style.fill.fgColor&&style.fill.fgColor.rgb==='FFDCE6F1';
+
     html+='<tr>';
-    if(r===0){
-      const cell=input[XLSX.utils.encode_cell({r:0,c:0})];
-      const val=cell?cell.v:'MODEL INPUT';
+    if(isTitleRow){
+      const val=firstCell?firstCell.v:'Inputs';
       html+='<td class="titlelbl" colspan="'+(rng.e.c-rng.s.c+1)+'">'+escapeHtml(val)+'</td></tr>';
       continue;
     }
+    if(isSubtitle){
+      const val=firstCell?firstCell.v:'';
+      html+='<td class="subtitlelbl" colspan="'+(rng.e.c-rng.s.c+1)+'">'+escapeHtml(val)+'</td></tr>';
+      continue;
+    }
+    if(isSectionRow){
+      const val=firstCell?firstCell.v:'';
+      html+='<td class="sectionlbl" colspan="'+(rng.e.c-rng.s.c+1)+'">'+escapeHtml(val)+'</td></tr>';
+      continue;
+    }
     for(let c=rng.s.c;c<=rng.e.c;c++){
-      const cell=input[XLSX.utils.encode_cell({r:r,c:c})];
-      if(!cell){html+='<td class="blank"></td>';continue;}
-      if(cell.f){
+      const cell=input[XLSX.utils.encode_cell({r,c})];
+      if(!cell||cell.t==='z'){html+='<td class="blank"></td>';continue;}
+      if(isHeaderRow){
+        html+='<td class="hdrlbl">'+escapeHtml(String(cell.v===undefined?'':cell.v))+'</td>';
+      } else if(cell.f){
         html+='<td class="wired">='+escapeHtml(cell.f)+' <span class="v">'+escapeHtml(fmtVal(cell.v))+'</span></td>';
-      }else{
-        html+='<td class="blocklbl">'+escapeHtml(String(cell.v))+'</td>';
+      } else {
+        html+='<td class="blocklbl">'+escapeHtml(String(cell.v===undefined?'':cell.v))+'</td>';
       }
     }
     html+='</tr>';
@@ -534,6 +645,7 @@ function renderPreview(input){
   html+='</table></div>';
   $('preview').innerHTML=html;
 }
+
 
 function download(){
   if(!lastBuild)return;
