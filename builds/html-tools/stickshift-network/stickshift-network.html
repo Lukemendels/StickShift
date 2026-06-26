@@ -1039,23 +1039,108 @@ tags:
 # stickshift-network
 
 ## Purpose
-View, edit, and manage contact files and interaction history in your text-based CRM. The tool runs on the operator's machine, parses contacts under `/network/contacts/`, and exports changes as a VBA_WRITE envelope.
+
+View, edit, and manage contact files and interaction history in your text-based CRM. The tool runs on the operator's machine, parses contacts under `/network/contacts/`, and exports changes as a `VBA_WRITE` envelope.
+
+This skill also defines how to reason about and update contacts directly from chat by using the network specification and contacts index.
 
 ## When to use this skill
+
 - The operator wants to view their professional contacts and networks.
 - The operator wants to add, edit, or log interactions with individuals in their CRM directory.
 - The operator needs to export contact updates back to files.
+- The operator asks to “log an interaction” or “create/update a contact” in the `/network/contacts/` directory.
 
-## How to open the tool
-A local HTML tool cannot be opened from a chat hyperlink - the operator launches it from StickShift. Give the operator this block verbatim (these exact lines, no code fence), then one instruction line, and nothing else:
+## Spec and index (what defines the schema and roster)
 
+When you work with contacts from chat, treat these two files as canonical:
+
+- `/network/network.md`  
+  - The locked specification for the text-based CRM.  
+  - Defines the contact frontmatter fields, required headings (`# Summary`, `# Notes`, `# Interaction log`), and the interaction log bullet format.
+
+- `/network/contacts/index.md`  
+  - The roster of existing contacts.  
+  - Lists each contact file slug under `/network/contacts/` (for example, `heather-royce.md`, `juan-degree-hayes.md`).  
+  - Use this index to determine whether a contact already exists before creating a new file.
+
+When asked to update or log an interaction for a person:
+
+1. Load `/network/network.md` to confirm the schema.
+2. Load `/network/contacts/index.md` to see which contacts exist.
+3. Use the slug pattern from the index (or from the spec) to identify or create the correct contact file path under `/network/contacts/`.
+
+## Manual logging from chat (without opening the HTML tool)
+
+When the operator asks you to “log this interaction” or “add a contact” and wants to stay in chat, follow this pattern:
+
+1. **Load spec and index**
+   - Ensure you have `/network/network.md` (the spec) and `/network/contacts/index.md` (the roster) in context.
+   - Do not assume schema details without the spec; use the spec as the source of truth.
+
+2. **Determine whether the contact exists**
+   - Check `/network/contacts/index.md` for a slug matching the person (for example, `marc-rossi.md`).
+   - If the slug is present:
+     - Request that specific contact file (for example, `network/contacts/marc-rossi.md`).
+   - If the slug is not present:
+     - Plan to create a new contact file under `/network/contacts/` with a compliant slug.
+
+3. **If the contact exists: append interaction**
+   - Read the contact’s frontmatter and body.
+   - In the frontmatter:
+     - Update `last_contact` to the interaction date (ISO `YYYY-MM-DD`).
+   - In the body:
+     - Under `# Interaction log`, add a new bullet with the pattern:
+       - `- YYYY-MM-DD: Short description of the interaction.`
+   - Preserve `# Summary` and `# Notes` as-is unless the operator explicitly asks to edit them.
+   - Emit a single `VBA_WRITE` envelope that rewrites only this contact file, preserving all unmodified content.
+
+4. **If the contact does not exist: create a new file**
+   - Choose a slugged filename under `/network/contacts/`:
+     - Lowercase, hyphen-separated, no spaces (for example, `marc-rossi.md`).
+   - Create the contact file with frontmatter that conforms to the spec:
+     - `type: Contact`
+     - `name` (full name)
+     - `role`, `component`, `office` (if known)
+     - `email` (or empty string `""` if unknown)
+     - `last_contact` (interaction date, `YYYY-MM-DD`)
+     - `relationship` (for example, `collaborator`, `sponsor`, `peer`)
+     - `tags` (list of short, machine-friendly tags such as `[air-cargo, ksp-alternative, collaborator]`)
+   - Body sections:
+     - `# Summary` — brief description of who the person is and how they connect to the operator’s work.
+     - `# Notes` — key facts, preferences, or project-level notes.
+     - `# Interaction log` — start with at least one bullet describing the current interaction.
+   - Emit a single `VBA_WRITE` envelope that creates this new contact file.
+
+5. **Scope discipline**
+   - Do not modify other contact files in the same `VBA_WRITE` envelope unless the operator explicitly requests bulk changes.
+   - Do not alter the spec (`/network/network.md`) from this skill; spec changes are deliberate and out of scope unless the operator explicitly requests them.
+
+## How to open the tool (HTML dashboard mode)
+
+A local HTML tool cannot be opened from a chat hyperlink. The operator launches it from StickShift. When the operator wants the interactive CRM dashboard:
+
+1. Give them this exact fenced block (wrapped in a Markdown code fence):
+
+```markdown
 <HTML_OPEN>
 tool: stickshift-network.html
 include:
 - skills/stickshift-network.md
 </HTML_OPEN>
+```
 
-Instruction line: "Copy the block above and click Open HTML Tool in StickShift."
+2. Then provide a single instruction line, and nothing else:
+
+- Instruction line: `Copy the block above and click Open HTML Tool in StickShift.`
+
+In HTML dashboard mode:
+
+- The operator loads the network bundle into `stickshift-network.html`.
+- The tool parses all contacts under `/network/contacts/` using the spec.
+- Edits and interaction logs are made via the UI.
+- The tool exports only the modified contact files as a `VBA_WRITE` envelope, which the operator then applies.
+
 </script>
 
 <!-- Controller Logic -->
