@@ -61,8 +61,22 @@ Sub GenerateStickShiftIndexes()
     Dim count As Long
     count = ProcessDir(fso.GetFolder(m_BundleRoot), True)
 
-    MsgBox "Regenerated " & count & " index.md file(s).", vbInformation
+    ' Write success message into StickShift!B13 with timestamp instead of showing a MsgBox.
+    Dim ws As Object
+    Dim ts As String
+    Dim msg As String
+
+    msg = "Regenerated " & count & " index.md file(s)."
+    ts = Format(Now(), "yyyy-mm-dd hh:mm:ss")
+
+    On Error Resume Next
+    Set ws = ThisWorkbook.Worksheets("StickShift")
+    If Not ws Is Nothing Then
+        ws.Range("B13").Value = ts & "  |  " & msg
+    End If
+    On Error GoTo 0
 End Sub
+
 
 
 ' Returns count of index files written (this dir + all descendants).
@@ -79,12 +93,12 @@ Private Function ProcessDir(ByVal folder As Object, ByVal isRoot As Boolean) As 
     Dim cc As Long: cc = 0
 
     Dim f As Object
-    For Each f In folder.Files
-        If IsConceptFile(f.Name) And cc <= MAX_C Then
+    For Each f In folder.files
+        If IsConceptFile(f.name) And cc <= MAX_C Then
             Dim cType As String, ti As String, de As String, st As String, lt As String
             ParseFrontmatter ReadUtf8(f.path), cType, ti, de, st, lt
-            If ti = "" Then ti = BaseName(f.Name)   ' SPEC Sec.4.1: derive title from filename
-            cNm(cc) = f.Name: cTi(cc) = ti: cDe(cc) = de
+            If ti = "" Then ti = BaseName(f.name)   ' SPEC Sec.4.1: derive title from filename
+            cNm(cc) = f.name: cTi(cc) = ti: cDe(cc) = de
             cSt(cc) = st: cLT(cc) = lt
             cc = cc + 1
         End If
@@ -202,7 +216,7 @@ Private Function ProcessDir(ByVal folder As Object, ByVal isRoot As Boolean) As 
     End If
 
     ' Subdirectories section.
-    If subdirs.Count > 0 Then
+    If subdirs.count > 0 Then
         sb = sb & "# Subdirectories" & vbLf
         Dim sdNames() As String
         sdNames = SubfolderNamesSorted(subdirs)
@@ -316,7 +330,7 @@ Private Function OrderedGroupKeys(ByVal dict As Object) As String()
     Dim leftover() As String, rc As Long: rc = 0
     ReDim leftover(0 To dict.count)
     Dim kk As Variant
-    For Each kk In dict.Keys
+    For Each kk In dict.keys
         If Not used.Exists(CStr(kk)) Then leftover(rc) = CStr(kk): rc = rc + 1
     Next kk
     If rc > 0 Then
