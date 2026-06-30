@@ -151,14 +151,14 @@ Sub BuildContextBundle()
     Dim fullOutput As String: fullOutput = header & assembled
 
     ' 6. Write to -dist sibling folder (never inside the bundle root).
-    Dim distDir As String: distDir = StickShiftConfig.distDir()
-    If distDir = "" Then
+    Dim DistDir As String: DistDir = StickShiftConfig.DistDir()
+    If DistDir = "" Then
         MsgBox "Bundle root not set - cannot determine output directory.", _
                vbCritical, "StickShift"
         Exit Sub
     End If
 
-    Dim outPath As String: outPath = distDir & OUT_FILENAME
+    Dim outPath As String: outPath = DistDir & OUT_FILENAME
     WriteUtf8 outPath, fullOutput
 
     ' 7. Open/focus the dist folder in Explorer (reuse existing window).
@@ -168,7 +168,7 @@ Sub BuildContextBundle()
     Dim shellApp As Object
     Set shellApp = CreateObject("Shell.Application")
     Dim distNorm As String
-    distNorm = LCase(TrimTrailSlash(distDir))
+    distNorm = LCase(TrimTrailSlash(DistDir))
     Dim openWin As Boolean: openWin = True
     Dim w As Object
     For Each w In shellApp.Windows
@@ -185,7 +185,7 @@ Sub BuildContextBundle()
             Exit For
         End If
     Next w
-    If openWin Then Shell "explorer.exe """ & distDir & """", vbNormalFocus
+    If openWin Then Shell "explorer.exe """ & DistDir & """", vbNormalFocus
 
     ' Write completion info to StickShift!B9 instead of showing a message box.
     Dim ws As Object
@@ -212,43 +212,73 @@ Private Function AssembleIndex(ByVal root As String, _
                                 ByRef foundCount As Long, _
                                 ByRef mapCount As Long, _
                                 ByRef selCount As Long) As String
-    Dim sb As String: sb = ""
+    Dim sb As String
+    sb = ""
 
     ' 1. All concept files under _foundation/, sorted by filename ascending.
-    Dim foundDir As String: foundDir = root & FOUNDATION_DIR
+    Dim foundDir As String
+    foundDir = root & FOUNDATION_DIR
+
     If fso.FolderExists(foundDir) Then
         Dim foundFiles() As String
-        Dim ffc As Long: ffc = 0
+        Dim ffc As Long
+        ffc = 0
         ReDim foundFiles(0 To 99)
+
         CollectConceptsRecursive fso.GetFolder(foundDir), root, foundFiles, ffc
+
         If ffc > 0 Then
             ReDim Preserve foundFiles(0 To ffc - 1)
             InsertionSortByFilename foundFiles
+
             Dim i As Long
             For i = 0 To ffc - 1
-                Dim fContent As String: fContent = ReadUtf8(root & Replace(foundFiles(i), "/", "\"))
+                Dim fContent As String
+                fContent = ReadUtf8(root & Replace(foundFiles(i), "/", "\"))
+
                 sb = sb & MakeAnchor(foundFiles(i), fContent, "foundation")
                 foundCount = foundCount + 1
             Next i
         End If
     End If
 
-    ' 2. Root index.md.
-    Dim rootIdx As String: rootIdx = root & "index.md"
+    ' 2. Root index.md (bundle root map).
+    Dim rootIdx As String
+    rootIdx = root & "index.md"
+
     If fso.FileExists(rootIdx) Then
         sb = sb & MakeAnchor("index.md", ReadUtf8(rootIdx), "map")
         mapCount = mapCount + 1
     End If
 
-    ' 3. skills/index.md.
-    Dim skillsIdx As String: skillsIdx = root & Replace(SKILLS_INDEX, "/", "\")
-    If fso.FileExists(skillsIdx) Then
-        sb = sb & MakeAnchor(SKILLS_INDEX, ReadUtf8(skillsIdx), "map")
-        mapCount = mapCount + 1
+    ' 3. All subfolder index.md files (including skills/index.md, etc.), as map layer.
+    Dim idxFiles() As String
+    Dim idxCount As Long
+    idxCount = 0
+    ReDim idxFiles(0 To 99)
+
+    ' Start at the bundle root; isRoot := True so root index.md is not duplicated.
+    CollectSubfolderIndexFiles fso.GetFolder(root), root, idxFiles, idxCount, True
+
+    If idxCount > 0 Then
+        ReDim Preserve idxFiles(0 To idxCount - 1)
+        InsertionSortByFilename idxFiles
+
+        Dim j As Long
+        For j = 0 To idxCount - 1
+            Dim idxAbs As String
+            idxAbs = root & Replace(idxFiles(j), "/", "\")
+
+            If fso.FileExists(idxAbs) Then
+                sb = sb & MakeAnchor(idxFiles(j), ReadUtf8(idxAbs), "map")
+                mapCount = mapCount + 1
+            End If
+        Next j
     End If
 
     AssembleIndex = sb
 End Function
+
 
 
 Private Function AssembleAll(ByVal root As String, _
@@ -836,7 +866,7 @@ Public Sub OpenHtmlTool()
 
     ' Resolve + launch the tool from the -html sibling.
     Dim htmlPath As String
-    htmlPath = StickShiftConfig.htmlDir() & toolFile
+    htmlPath = StickShiftConfig.HtmlDir() & toolFile
     If Not fso.FileExists(htmlPath) Then
         MsgBox "Tool not found:" & vbLf & htmlPath & vbLf & vbLf & _
                "Install it first with Install HTML Tool.", vbExclamation, "StickShift"
@@ -858,9 +888,9 @@ Public Sub OpenHtmlTool()
         Dim fullOutput As String
         fullOutput = BundleHeader("bundle", fC, mC, sC, assembled) & assembled
 
-        Dim distDir As String: distDir = StickShiftConfig.distDir()
-        If distDir <> "" Then
-            WriteUtf8 distDir & OUT_FILENAME, fullOutput
+        Dim DistDir As String: DistDir = StickShiftConfig.DistDir()
+        If DistDir <> "" Then
+            WriteUtf8 DistDir & OUT_FILENAME, fullOutput
             msg = msg & vbLf & "Skill context written to -dist\" & OUT_FILENAME & _
                   " (paste it only if you reopen the tool from a fresh chat)."
         End If
@@ -877,6 +907,45 @@ Public Sub OpenHtmlTool()
         ws.Range("B18:D18").Value = ts & "  |  " & Replace(msg, vbLf, "  ")
     End If
     On Error GoTo 0
+End Sub
+
+Public Sub CollectSubfolderIndexFiles(ByVal folder As Object, ByVal root As String, _
+                                       ByRef files() As String, ByRef count As Long, _
+                                       Optional ByVal isRoot As Boolean = False)
+    Dim f As Object
+
+    ' Collect index.md files, skipping the root-level index.md (handled separately).
+    For Each f In folder.files
+        If LCase(f.name) = "index.md" Then
+            If Not isRoot Then
+                Dim rel As String
+                rel = Mid(f.path, Len(root) + 1)
+                rel = Replace(rel, "\", "/")
+
+                If count > UBound(files) Then
+                    ReDim Preserve files(0 To count + 999)
+                End If
+
+                files(count) = rel
+                count = count + 1
+            End If
+        End If
+    Next f
+
+    ' Recurse into subfolders, skipping system/tooling folders.
+    Dim d As Object
+    For Each d In folder.SubFolders
+        Dim folderName As String
+        folderName = LCase(d.name)
+
+        If folderName <> ".git" And folderName <> ".github" And _
+           folderName <> ".venv" And folderName <> ".pytest_cache" And _
+           folderName <> "builds" And folderName <> "tests" And _
+           folderName <> "html" And folderName <> "_meta" Then
+
+            CollectSubfolderIndexFiles d, root, files, count, False
+        End If
+    Next d
 End Sub
 
 
